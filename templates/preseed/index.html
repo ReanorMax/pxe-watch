@@ -302,11 +302,6 @@
             border-radius: 8px;
             padding: 15px;
             cursor: pointer;
-            transition: all 0.3s;
-        }
-        .preset-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
         }
         .preset-card.active {
             border-color: var(--secondary);
@@ -949,8 +944,6 @@
                     </div>
                 </div>
                 <div class="wizard-navigation">
-                    <button type="button" id="prev-step" class="btn" style="background: var(--dark);" disabled>Назад</button>
-                    <button type="button" id="next-step" class="btn">Далее</button>
                     <button type="submit" id="generate-btn" class="btn btn-success btn-large" style="display: none;">
                         📥 Скачать preseed.cfg
                     </button>
@@ -977,8 +970,6 @@
         };
         document.addEventListener('DOMContentLoaded', function() {
             initInterface();
-            loadTemplates();
-            loadHistory();
         });
         function initInterface() {
             initPresetNames();
@@ -998,16 +989,6 @@
             });
         }
         function setupWizardNavigation() {
-            document.getElementById('next-step').addEventListener('click', function() {
-                if (currentStep < totalSteps) {
-                    goToStep(currentStep + 1);
-                }
-            });
-            document.getElementById('prev-step').addEventListener('click', function() {
-                if (currentStep > 1) {
-                    goToStep(currentStep - 1);
-                }
-            });
             document.querySelectorAll('.wizard-steps .step').forEach(stepEl => {
                 stepEl.addEventListener('click', () => {
                     const stepNum = parseInt(stepEl.dataset.step);
@@ -1037,8 +1018,6 @@
                     if (stepNum < step) s.classList.add('completed');
                     else if (stepNum === step) s.classList.add('active');
                 });
-                document.getElementById('prev-step').disabled = (step === 1);
-                document.getElementById('next-step').style.display = (step === totalSteps) ? 'none' : 'block';
                 document.getElementById('generate-btn').style.display = (step === totalSteps) ? 'block' : 'none';
                 currentStep = step;
                 window.scrollTo(0,0);
