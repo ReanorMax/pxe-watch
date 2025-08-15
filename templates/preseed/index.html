@@ -989,7 +989,8 @@
             });
         }
         function setupWizardNavigation() {
-            document.querySelectorAll('.wizard-steps .step').forEach(stepEl => {
+            const stepElements = document.querySelectorAll('.wizard-steps .step');
+            stepElements.forEach(stepEl => {
                 stepEl.addEventListener('click', () => {
                     const stepNum = parseInt(stepEl.dataset.step);
                     goToStep(stepNum);
@@ -1002,6 +1003,11 @@
             });
             window.goToStep = function(step) {
                 if (step < 1 || step > totalSteps) return;
+                const currentCard = document.querySelector(`.config-card[data-step="${step}"]`);
+                if (!currentCard) {
+                    console.error(`Не найден шаг ${step}`);
+                    return;
+                }
                 document.querySelectorAll('.config-card').forEach(card => {
                     card.style.display = 'none';
                     card.classList.remove('active');
@@ -1009,16 +1015,17 @@
                 document.querySelectorAll('.wizard-steps .step').forEach(stepEl => {
                     stepEl.classList.remove('active', 'completed');
                 });
-                const currentCard = document.querySelector(`.config-card[data-step="${step}"]`);
                 currentCard.style.display = 'block';
                 currentCard.classList.add('active');
-                const steps = document.querySelectorAll('.wizard-steps .step');
-                steps.forEach(s => {
+                stepElements.forEach(s => {
                     const stepNum = parseInt(s.dataset.step);
                     if (stepNum < step) s.classList.add('completed');
                     else if (stepNum === step) s.classList.add('active');
                 });
-                document.getElementById('generate-btn').style.display = (step === totalSteps) ? 'block' : 'none';
+                const generateBtn = document.getElementById('generate-btn');
+                if (generateBtn) {
+                    generateBtn.style.display = (step === totalSteps) ? 'block' : 'none';
+                }
                 currentStep = step;
                 window.scrollTo(0,0);
             }
