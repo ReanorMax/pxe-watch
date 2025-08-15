@@ -460,71 +460,76 @@ def check_ansible_marks_background():
 
 # ==== Интеграция с Semaphore API ====
 def get_semaphore_status():
-    """
-    Получает статус последнего запуска Ansible из Semaphore
-    """
+    """Получает статус последнего запуска Ansible из Semaphore."""
     try:
-        url = f'{SEMAPHORE_API}/project/{SEMAPHORE_PROJECT_ID}/templates'
-        headers = {'Authorization': f'Bearer {SEMAPHORE_TOKEN}'}
+        url = f"{SEMAPHORE_API}/project/{SEMAPHORE_PROJECT_ID}/templates"
+        headers = {"Authorization": f"Bearer {SEMAPHORE_TOKEN}"}
         res = requests.get(url, headers=headers, timeout=10)
         if res.status_code != 200:
-            return {'status': 'error', 'msg': f'API ошибка {res.status_code}'}
+            return {"status": "error", "msg": f"API ошибка {res.status_code}"}
 
         templates = res.json()
-        template = next((t for t in templates if t['id'] == SEMAPHORE_TEMPLATE_ID), None)
-        if not template or 'last_task' not in template:
-            return {'status': 'unknown', 'msg': 'Нет данных'}
+        template = next((t for t in templates if t["id"] == SEMAPHORE_TEMPLATE_ID), None)
+        if not template or "last_task" not in template:
+            return {"status": "unknown", "msg": "Нет данных"}
 
-        task = template['last_task']
-        created = datetime.datetime.fromisoformat(task['created'].replace('Z', '+00:00'))
+        task = template["last_task"]
+        created = datetime.datetime.fromisoformat(task["created"].replace("Z", "+00:00"))
         local_time = created.astimezone(datetime.datetime.now().astimezone().tzinfo)
-        formatted_time = local_time.strftime('%d.%m.%Y %H:%M')
+        formatted_time = local_time.strftime("%d.%m.%Y %H:%M")
 
         status_map = {
-            'success': 'ok',
-            'failed': 'failed',
-            'running': 'running',
-            'waiting': 'pending',
-            'canceled': 'failed'
+            "success": "ok",
+            "failed": "failed",
+            "running": "running",
+            "waiting": "pending",
+            "canceled": "failed",
         }
-        display_status = task['status']
-        icon = '✅' if task['status'] == 'success' else \
-               '🔴' if task['status'] in ('failed', 'canceled') else \
-               '🔄' if task['status'] in ('running', 'waiting') else \
-               '🟡'
+        display_status = task["status"]
+        icon = (
+            "✅" if task["status"] == "success" else
+            "🔴" if task["status"] in ("failed", "canceled") else
+            "🔄" if task["status"] in ("running", "waiting") else
+            "🟡"
+        )
 
         return {
-            'status': status_map.get(task['status'], 'unknown'),
-            'display_status': display_status,
-            'time': formatted_time,
-            'commit_message': task.get('commit_message', ''),
-            'task_id': task.get('id'),
-            'icon': icon
+            "status": status_map.get(task["status"], "unknown"),
+            "display_status": display_status,
+            "time": formatted_time,
+            "commit_message": task.get("commit_message", ""),
+            "task_id": task.get("id"),
+            "icon": icon,
         }
+    except requests.exceptions.Timeout:
+        logging.error("Ошибка получения статуса из Semaphore: timeout")
+        return {"status": "timeout", "msg": "Semaphore API request timed out"}
     except Exception as e:
         logging.error(f"Ошибка получения статуса из Semaphore: {e}")
-        return {'status': 'error', 'msg': str(e)}
+        return {"status": "error", "msg": str(e)}
 
 def trigger_semaphore_playbook():
     try:
-        url = f'{SEMAPHORE_API}/project/{SEMAPHORE_PROJECT_ID}/tasks'
+        url = f"{SEMAPHORE_API}/project/{SEMAPHORE_PROJECT_ID}/tasks"
         headers = {
-            'Authorization': f'Bearer {SEMAPHORE_TOKEN}',
-            'Content-Type': 'application/json'
+            "Authorization": f"Bearer {SEMAPHORE_TOKEN}",
+            "Content-Type": "application/json",
         }
-        payload = {'template_id': SEMAPHORE_TEMPLATE_ID}
+        payload = {"template_id": SEMAPHORE_TEMPLATE_ID}
         res = requests.post(url, json=payload, headers=headers, timeout=10)
 
         # ✅ Исправлено: принимаем 200, 201 и другие успешные коды
-        if res.status_code >= 200 and res.status_code < 300:
+        if 200 <= res.status_code < 300:
             task = res.json()
             logging.info(f"Ansible запущен через API: task_id={task['id']}")
-            return {'status': 'ok', 'task_id': task['id']}
-        else:
-            return {'status': 'error', 'msg': f"HTTP {res.status_code}: {res.text}"}
+            return {"status": "ok", "task_id": task["id"]}
+        return {"status": "error", "msg": f"HTTP {res.status_code}: {res.text}"}
+    except requests.exceptions.Timeout:
+        logging.error("Ошибка запуска Ansible через API: timeout")
+        return {"status": "timeout", "msg": "Semaphore API request timed out"}
     except Exception as e:
         logging.error(f"Ошибка запуска Ansible через API: {e}")
-        return {'status': 'error', 'msg': str(e)}
+        return {"status": "error", "msg": str(e)}
 # ==== API эндпоинты для Semaphore ====
 @app.route('/api/semaphore/status', methods=['GET'])
 def api_semaphore_status():
