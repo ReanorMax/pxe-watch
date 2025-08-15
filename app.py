@@ -1053,4 +1053,14 @@ if __name__ == '__main__':
     Точка входа для запуска веб-приложения.
     Запускает Flask-сервер на всех интерфейсах (0.0.0.0) на порту 5000.
     """
+    def start_ansible_service() -> None:
+        """Запускает дополнительный сервис ansible_service.py в фоне."""
+        service_path = os.path.join(os.path.dirname(__file__), 'ansible_service.py')
+        try:
+            subprocess.Popen(['python3', service_path])
+            logging.info('Ansible service started')
+        except Exception as e:
+            logging.error(f'Failed to start ansible service: {e}')
+
+    start_ansible_service()
     app.run(host='0.0.0.0', port=5000)
