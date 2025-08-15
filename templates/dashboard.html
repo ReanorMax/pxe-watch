@@ -1,0 +1,682 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>PXE Dashboard – Сфера Телеком</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <!-- CodeMirror CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css" />
+  <!-- Тема Dracula -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/dracula.min.css" />
+  <!-- Шрифт Fira Code -->
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --accent: #1976d2;
+      --bg: #fafafa;
+      --text: #212121;
+      --border: #e0e0e0;
+      --green: #66bb6a;
+      --grey: #9e9e9e;
+      --danger: #ef5350;
+      --orange: #ffa726;
+      --git: #6f42c1;
+      --portainer: #139eca;
+      --wol: #4caf50;
+      --shutdown: #607d8b;
+      --logtail: #9c27b0;
+      --header-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      --table-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      --divider: rgba(255,255,255,0.2);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #121212;
+        --text: #f5f5f5;
+        --border: #333;
+        --accent: #1e88e5;
+        --green: #4caf50;
+        --grey: #757575;
+        --danger: #c62828;
+        --orange: #ff9800;
+        --git: #8a63d2;
+        --portainer: #15a8e0;
+        --wol: #66bb6a;
+        --shutdown: #78909c;
+        --logtail: #8e24aa;
+        --header-shadow: 0 2px 8px rgba(0,0,0,0.5);
+        --table-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        --divider: rgba(255,255,255,0.1);
+      }
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      transition: background 0.3s, color 0.3s;
+    }
+    body {
+      font-family: "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    header {
+      background: linear-gradient(135deg, var(--accent), #1e88e5);
+      color: #fff;
+      padding: 14px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: var(--header-shadow);
+    }
+    .btn,
+    .btn-reboot,
+    .btn-semaphore,
+    .btn-danger,
+    .btn-portainer,
+    .btn-wol,
+    .btn-shutdown,
+    .btn-logtail {
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      color: #fff;
+      cursor: pointer;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      text-decoration: none;
+      font-size: 0.9em;
+      margin-top: 4px;
+    }
+    .btn,
+    .btn-reboot,
+    .btn-semaphore,
+    .header-group .btn {
+      padding: 8px 16px;
+      font-size: 0.95em;
+      margin-top: 0;
+    }
+    .btn { background: var(--accent); }
+    .btn:hover { background: #1565c0; }
+    .btn-danger { background: var(--danger); }
+    .btn-danger:hover { background: #d32f2f; }
+    .btn-reboot { background: var(--orange); padding: 4px 8px; font-size: 0.85em; }
+    .btn-reboot:hover { background: #fb8c00; }
+    .btn-semaphore { background: #4caf50; }
+    .btn-semaphore:hover { background: #388e3c; }
+    .btn-git-push { background: var(--git); }
+    .btn-git-push:hover { background: #5a32a3; }
+    @media (prefers-color-scheme: dark) {
+      .btn-git-push:hover { background: #7a52c2; }
+    }
+    .btn-portainer { background: var(--portainer); padding: 6px 10px; font-size: 0.85em; }
+    .btn-portainer:hover { background: #0f7ba5; }
+    @media (prefers-color-scheme: dark) {
+      .btn-portainer:hover { background: #108bc9; }
+    }
+    .btn-portainer i { font-size: 0.9em; }
+    .btn-wol { background: var(--wol); padding: 4px 8px; font-size: 0.85em; }
+    .btn-wol:hover { background: #388e3c; }
+    @media (prefers-color-scheme: dark) {
+      .btn-wol:hover { background: #81c784; }
+    }
+    .btn-wol i { font-size: 0.9em; }
+    .btn-shutdown { background: var(--shutdown); padding: 4px 8px; font-size: 0.85em; }
+    .btn-shutdown:hover { background: #455a64; }
+    @media (prefers-color-scheme: dark) {
+      .btn-shutdown:hover { background: #90a4ae; }
+    }
+    .btn-shutdown i { font-size: 0.9em; }
+    .btn-logtail { background: var(--logtail); padding: 6px 10px; font-size: 0.85em; }
+    .btn-logtail:hover { background: #7b1fa2; }
+    .btn-logtail i { font-size: 0.9em; }
+    .btn-gitlab { background: #f34f29 !important; }
+    .btn-gitlab:hover { background: #cc4125 !important; }
+    .container { padding: 24px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--bg);
+      color: var(--text);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: var(--table-shadow);
+      font-size: 0.95em;
+    }
+    th, td { padding: 14px 18px; text-align: left; vertical-align: middle; }
+    tr:not(:last-child) td { border-bottom: 1px solid var(--border); }
+    tr:hover { background-color: rgba(0,0,0,0.05); }
+    .status { font-weight: 600; display: flex; align-items: center; gap: 6px; }
+    .status.online { color: var(--green); }
+    .status.offline { color: var(--grey); }
+    .status.running { color: var(--orange); }
+    .status.failed { color: var(--danger); }
+    .status.unknown { color: var(--grey); }
+    #overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; z-index: 1000; }
+    .modal { position: fixed; top: 0; right: 0; width: 50vw; height: 100vh; background: var(--bg); z-index: 1001; display: none; flex-direction: column; box-shadow: -4px 0 12px rgba(0,0,0,0.3); }
+    .modal header { background: var(--accent); color: #fff; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+    #playbook-editor-container { flex: 1; overflow: hidden; position: relative; }
+    #playbook-editor { height: 100%; width: 100%; }
+    .CodeMirror { height: 100% !important; font-family: 'Fira Code', monospace !important; font-size: 14px !important; line-height: 1.5 !important; margin: 0 !important; padding: 0 !important; }
+    .CodeMirror-gutters { background-color: #282a36 !important; color: #6272a4 !important; padding: 0 12px !important; border-right: 1px solid #444 !important; }
+    .CodeMirror-linenumber { font-family: 'Fira Code', monospace !important; font-size: 14px !important; color: #6272a4 !important; text-align: right; }
+    .CodeMirror-cursor { border-left: 2px solid #f8f8f0 !important; }
+    .modal textarea:not(#playbook-content) { flex: 1; padding: 12px; font-family: monospace; font-size: 13px; background: #1e1e1e; color: #eee; border: none; resize: none; }
+    .controls { padding: 12px; display: flex; gap: 8px; justify-content: flex-end; flex-shrink: 0; }
+    .log-viewer { flex: 1; background: #1e1e1e; color: #ddd; font-family: monospace; font-size: 14px; padding: 12px; overflow-y: auto; white-space: pre-wrap; border-top: 1px solid var(--border); line-height: 1.6; }
+    .file-list-simple-container { flex: 1; padding: 16px; overflow-y: auto; }
+    .file-simple-table { width: 100%; border-collapse: collapse; background: var(--bg); color: var(--text); font-size: 0.9em; }
+    .file-simple-table th, .file-simple-table td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); }
+    .file-simple-table th { background-color: rgba(0, 0, 0, 0.05); font-weight: 600; }
+    @media (prefers-color-scheme: dark) { .file-simple-table th { background-color: rgba(255, 255, 255, 0.1); } }
+    .file-simple-table tbody tr:hover { background-color: rgba(0, 0, 0, 0.03); }
+    @media (prefers-color-scheme: dark) { .file-simple-table tbody tr:hover { background-color: rgba(255, 255, 255, 0.07); } }
+    .file-simple-table td:nth-child(2) { text-align: right; font-variant-numeric: tabular-nums; }
+    .file-simple-table td:nth-child(3) { font-family: 'Fira Code', 'Consolas', 'Courier New', monospace; font-size: 0.85em; }
+    .file-simple-table td:nth-child(1) { font-family: 'Fira Code', 'Consolas', 'Courier New', monospace; }
+    .header-group { display: flex; gap: 8px; align-items: center; }
+    .divider { width: 1px; height: 24px; background: var(--divider); margin: 0 12px; }
+    .actions-cell { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+    .semaphore-status {
+      font-size: 0.85em;
+      opacity: 0.9;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 4px;
+    }
+    .semaphore-status i {
+      font-size: 0.9em;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1><i class="fa fa-server"></i> PXE Dashboard</h1>
+    <div style="display:flex;gap:12px;align-items:center;">
+      <div class="header-group">
+        <a class="btn btn-semaphore" href="http://10.19.1.90:3000" target="_blank" rel="noopener noreferrer">
+          <i class="fa fa-external-link-alt"></i> Semaphore
+        </a>
+        <a class="btn btn-gitlab" href="http://10.19.1.20/Automatization/ansible-semaphore" target="_blank" rel="noopener noreferrer" title="GitLab Ansible">
+          <i class="fab fa-gitlab"></i> GitLab
+        </a>
+        <a class="btn btn-logtail" href="http://10.19.1.90:5004/logtail.html" target="_blank" rel="noopener noreferrer">
+          <i class="fas fa-file-alt"></i> Logtail
+        </a>
+        <button class="btn btn-git-push" id="git-commit-push">
+          <i class="fab fa-git-alt"></i> Commit & Push
+        </button>
+      </div>
+      <div class="divider"></div>
+      <div class="header-group">
+        <button class="btn" id="edit-preseed"><i class="fa fa-edit"></i> Preseed</button>
+        <button class="btn" id="edit-dnsmasq"><i class="fa fa-network-wired"></i> DHCP / iPXE</button>
+        <button class="btn" id="edit-ipxe"><i class="fa fa-code"></i> iPXE</button>
+      </div>
+      <div class="divider"></div>
+      <div class="header-group">
+        <button class="btn btn-danger" id="clear-db"><i class="fa fa-trash"></i> Очистить</button>
+        <button class="btn" id="toggle-ansible"><i class="fa fa-robot"></i> Ansible</button>
+        <button class="btn" id="run-ansible" style="background:#43b581">
+          <i class="fa fa-play"></i> Запустить Ansible
+        </button>
+      </div>
+      <div class="semaphore-status" id="semaphore-status">
+        <i class="fas fa-sync fa-spin"></i> Загрузка статуса...
+      </div>
+      <span style="font-weight:bold; opacity: 0.9;">"Сфера Телеком"</span>
+    </div>
+  </header>
+  <div id="ansible-panel" style="margin: 24px 0; padding: 16px; border-radius: 8px; background: var(--bg); border: 1px solid var(--border); display: none;">
+    <h3><i class="fa fa-robot"></i> Ansible</h3>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
+      <button class="btn" id="edit-inventory"><i class="fa fa-list"></i> inventory.ini</button>
+      <button class="btn" id="edit-playbook"><i class="fa fa-file-code"></i> playbook.yml</button>
+      <button class="btn" id="manage-files"><i class="fa fa-folder"></i> Файлы</button>
+    </div>
+    <h4><i class="fa fa-terminal"></i> Журнал выполнения Ansible</h4>
+    <div class="log-viewer" id="ansible-log"></div>
+  </div>
+  <div class="container">
+    <table>
+      <thead>
+        <tr>
+          <th>MAC</th>
+          <th>IP</th>
+          <th>Статус</th>
+          <th>Last Seen</th>
+          <th>Состояние</th>
+          <th>GUI</th>
+          <th>Действия</th>
+        </tr>
+      </thead>
+      <tbody id="hosts-table-body">
+        {% for h in hosts %}
+        <tr data-ip="{{ h.ip }}" data-mac="{{ h.mac }}">
+          <td>{{ h.mac }}</td>
+          <td>{{ h.ip }}</td>
+          <td>{{ h.stage }}</td>
+          <td><time datetime="{{ h.last }}">{{ h.last }}</time></td>
+          <td class="status {{ 'online' if h.online else 'offline' }}">
+            <i class="fa fa-circle"></i>
+            <span>{{ 'Online' if h.online else 'Offline' }}</span>
+          </td>
+          <td>
+            <a class="btn-portainer portainer-link" href="http://{{ h.ip }}:9000" target="_blank" rel="noopener noreferrer" title="Portainer" style="display: {% if h.ip and h.ip != '—' %}inline-flex{% else %}none{% endif %};">
+              <i class="fab fa-docker"></i> Portainer
+            </a>
+          </td>
+          <td class="actions-cell">
+            <button class="btn-wol" data-mac="{{ h.mac }}" title="Включить (Wake-on-LAN)">
+              <i class="fas fa-plug"></i> WOL
+            </button>
+            <button class="btn-shutdown" data-ip="{{ h.ip }}" title="Выключить">
+              <i class="fas fa-power-off"></i> Shutdown
+            </button>
+            <button class="btn-reboot" data-ip="{{ h.ip }}" title="Перезагрузить">
+              <i class="fa fa-sync-alt"></i> reboot
+            </button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div id="overlay"></div>
+  <!-- Модальные окна -->
+  <div class="modal" id="preseed-modal">
+    <header><span>preseed.cfg</span><button class="btn close-modal" data-modal="preseed-modal"><i class="fa fa-times"></i></button></header>
+    <textarea id="preseed-content"></textarea>
+    <div class="controls"><button class="btn" id="save-preseed"><i class="fa fa-save"></i> Сохранить</button></div>
+  </div>
+  <div class="modal" id="dnsmasq-modal">
+    <header><span>DNSMasq DHCP / iPXE</span><button class="btn close-modal" data-modal="dnsmasq-modal"><i class="fa fa-times"></i></button></header>
+    <textarea id="dnsmasq-content"></textarea>
+    <div class="controls">
+      <button class="btn" id="save-dnsmasq"><i class="fa fa-save"></i> Сохранить и перезапустить</button>
+      <button class="btn" id="add-dhcp-host"><i class="fa fa-plus"></i> Добавить MAC</button>
+    </div>
+  </div>
+  <div class="modal" id="ipxe-modal">
+    <header><span>/srv/tftp/boot.ipxe и autoexec.ipxe</span><button class="btn close-modal" data-modal="ipxe-modal"><i class="fa fa-times"></i></button></header>
+    <textarea id="ipxe-content"></textarea>
+    <div class="controls"><button class="btn" id="save-ipxe"><i class="fa fa-save"></i> Сохранить</button></div>
+  </div>
+  <div class="modal" id="playbook-modal">
+    <header><span>playbook.yml</span><button class="btn close-modal" data-modal="playbook-modal"><i class="fa fa-times"></i></button></header>
+    <div id="playbook-editor-container"><div id="playbook-editor"></div></div>
+    <div class="controls"><button class="btn" id="save-playbook"><i class="fa fa-save"></i> Сохранить</button></div>
+  </div>
+  <div class="modal" id="inventory-modal">
+    <header><span>inventory.ini</span><button class="btn close-modal" data-modal="inventory-modal"><i class="fa fa-times"></i></button></header>
+    <textarea id="inventory-content"></textarea>
+    <div class="controls"><button class="btn" id="save-inventory"><i class="fa fa-save"></i> Сохранить</button></div>
+  </div>
+  <div class="modal" id="files-modal">
+    <header><span>Файлы /root/ansible/files</span><button class="btn close-modal" data-modal="files-modal"><i class="fa fa-times"></i></button></header>
+    <div class="file-list-simple-container">
+      <table class="file-simple-table">
+        <thead>
+          <tr>
+            <th>Имя файла</th>
+            <th>Размер</th>
+            <th>Изменен</th>
+          </tr>
+        </thead>
+        <tbody id="files-simple-list-body"></tbody>
+      </table>
+    </div>
+  </div>
+  <!-- CodeMirror -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/yaml/yaml.min.js"></script>
+  <script>
+    let playbookEditor;
+    document.addEventListener('DOMContentLoaded', () => {
+      playbookEditor = CodeMirror(document.getElementById('playbook-editor'), {
+        value: "",
+        mode: "text/x-yaml",
+        theme: "dracula",
+        lineNumbers: true,
+        lineWrapping: true,
+        indentUnit: 2,
+        tabSize: 2,
+        indentWithTabs: false,
+        styleActiveLine: true,
+        matchBrackets: true,
+        autoCloseBrackets: true,
+        extraKeys: { Tab: cm => cm.replaceSelection("  ", "end") }
+      });
+    });
+    const overlay = document.getElementById('overlay');
+    const modals = document.querySelectorAll('.modal');
+    function openModal(modal) {
+      overlay.style.display = 'block';
+      modal.style.display = 'flex';
+    }
+    function closeModal(modal) {
+      overlay.style.display = 'none';
+      modal.style.display = 'none';
+    }
+    function updatePortainerLinks() {
+        const rows = document.querySelectorAll('#hosts-table-body tr');
+        rows.forEach(row => {
+            const ip = row.dataset.ip;
+            const portainerLink = row.querySelector('.portainer-link');
+            if (portainerLink) {
+                if (ip && ip !== '—') {
+                    const url = `http://${ip}:9000`;
+                    portainerLink.href = url;
+                    portainerLink.style.display = 'inline-flex';
+                    portainerLink.title = `Portainer (${url})`;
+                } else {
+                    portainerLink.style.display = 'none';
+                    portainerLink.href = '#';
+                    portainerLink.title = 'Portainer (IP неизвестен)';
+                }
+            }
+        });
+    }
+    async function refreshTable() {
+      try {
+        const res = await fetch('/');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const html = await res.text();
+        const parser = new DOMParser();
+        const newDoc = parser.parseFromString(html, 'text/html');
+        const newRows = newDoc.querySelectorAll('#hosts-table-body tr');
+        const currentTbody = document.getElementById('hosts-table-body');
+        const currentMap = {};
+        currentTbody.querySelectorAll('tr').forEach(tr => {
+          const ip = tr.dataset.ip;
+          if (ip) currentMap[ip] = tr;
+        });
+        const newMap = {};
+        newRows.forEach(tr => {
+          const ip = tr.dataset.ip;
+          if (ip) newMap[ip] = tr;
+        });
+        Object.keys(currentMap).forEach(ip => {
+          if (!newMap[ip]) currentMap[ip].remove();
+        });
+        newRows.forEach(newTr => {
+          const ip = newTr.dataset.ip;
+          if (ip) {
+            const existing = currentMap[ip];
+            if (existing) {
+              existing.innerHTML = newTr.innerHTML;
+            } else {
+              currentTbody.appendChild(newTr);
+            }
+          }
+        });
+        updatePortainerLinks();
+      } catch (e) {
+        console.warn('Ошибка обновления таблицы:', e);
+      }
+    }
+    setInterval(refreshTable, 30000);
+    document.addEventListener('DOMContentLoaded', updatePortainerLinks);
+    async function openModalWithContent(modalId, apiUrl, contentElementId, isPlaybook = false) {
+      const modal = document.getElementById(modalId);
+      try {
+        const res = await fetch(apiUrl);
+        if (!res.ok) throw new Error();
+        const content = await res.text();
+        if (isPlaybook && playbookEditor) {
+          playbookEditor.setValue(content);
+          setTimeout(() => playbookEditor.refresh(), 100);
+        } else {
+          const el = document.getElementById(contentElementId);
+          if (el) el.value = content;
+        }
+        openModal(modal);
+      } catch (e) {
+        alert(`Ошибка загрузки: ${e.message}`);
+      }
+    }
+    async function saveContentToApi(apiUrl, contentElementId, successCallback, isPlaybook = false) {
+      try {
+        const content = isPlaybook && playbookEditor
+          ? playbookEditor.getValue()
+          : document.getElementById(contentElementId).value;
+        const res = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body: content
+        });
+        if (!res.ok) throw new Error((await res.json()).msg);
+        alert('Сохранено.');
+        if (successCallback) successCallback();
+      } catch (e) {
+        alert('Ошибка сохранения: ' + e.message);
+      }
+    }
+    [
+      { btn: 'edit-preseed', modal: 'preseed-modal', api: '/api/preseed', elem: 'preseed-content' },
+      { btn: 'edit-ipxe', modal: 'ipxe-modal', api: '/api/ipxe', elem: 'ipxe-content' },
+      { btn: 'edit-dnsmasq', modal: 'dnsmasq-modal', api: '/api/dnsmasq', elem: 'dnsmasq-content' },
+      { btn: 'edit-inventory', modal: 'inventory-modal', api: '/api/ansible/inventory', elem: 'inventory-content' },
+      { btn: 'edit-playbook', modal: 'playbook-modal', api: '/api/ansible/playbook', isPlaybook: true }
+    ].forEach(config => {
+      const btn = document.getElementById(config.btn);
+      if (btn) btn.onclick = () => openModalWithContent(
+        config.modal,
+        config.api,
+        config.elem,
+        config.isPlaybook
+      );
+    });
+    document.querySelectorAll('.close-modal').forEach(btn => {
+      btn.onclick = () => {
+        const modal = document.getElementById(btn.dataset.modal);
+        if (modal) closeModal(modal);
+      };
+    });
+    function setupSaveButton(buttonId, apiPath, contentId, onSuccess, isPlaybook = false) {
+      document.getElementById(buttonId).onclick = () => {
+        saveContentToApi(apiPath, contentId, onSuccess, isPlaybook);
+      };
+    }
+    setupSaveButton('save-preseed', '/api/preseed', 'preseed-content', () => closeModal(document.getElementById('preseed-modal')));
+    setupSaveButton('save-ipxe', '/api/ipxe', 'ipxe-content', () => closeModal(document.getElementById('ipxe-modal')));
+    setupSaveButton('save-dnsmasq', '/api/dnsmasq', 'dnsmasq-content', () => closeModal(document.getElementById('dnsmasq-modal')));
+    setupSaveButton('save-playbook', '/api/ansible/playbook', null, () => closeModal(document.getElementById('playbook-modal')), true);
+    setupSaveButton('save-inventory', '/api/ansible/inventory', 'inventory-content', () => closeModal(document.getElementById('inventory-modal')));
+    document.getElementById('manage-files').onclick = async () => {
+        const listBody = document.getElementById('files-simple-list-body');
+        listBody.innerHTML = '<tr><td colspan="3" style="text-align: center;">Загрузка...</td></tr>';
+        openModal(document.getElementById('files-modal'));
+        try {
+            const res = await fetch('/api/ansible/files');
+            const files = await res.json();
+            listBody.innerHTML = '';
+            if (files.error) {
+                 listBody.innerHTML = `<tr><td colspan="3" style="color:var(--danger);">Ошибка: ${files.error}</td></tr>`;
+                 return;
+            }
+            if (files.length === 0) {
+                 listBody.innerHTML = '<tr><td colspan="3" style="text-align: center; font-style: italic;">Файлы не найдены</td></tr>';
+                 return;
+            }
+            files.forEach(file => {
+                const tr = document.createElement('tr');
+                const escapedName = file.name.replace(/&/g, "&amp;").replace(/</g, "<").replace(/>/g, ">").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+                tr.innerHTML = `<td title="${escapedName}">${escapedName}</td><td>${file.size}</td><td>${file.modified}</td>`;
+                listBody.appendChild(tr);
+            });
+        } catch (e) {
+            console.error("Ошибка при загрузке списка файлов:", e);
+            listBody.innerHTML = `<tr><td colspan="3" style="color:var(--danger);">Ошибка загрузки: ${e.message}</td></tr>`;
+        }
+    };
+    document.getElementById('add-dhcp-host').onclick = () => {
+      const mac = prompt('MAC:');
+      const ip = prompt('IP:');
+      if (mac && ip) {
+        const textarea = document.getElementById('dnsmasq-content');
+        textarea.value = `dhcp-host=${mac},${ip},12h\n${textarea.value}`;
+      }
+    };
+    document.getElementById('clear-db').onclick = async () => {
+      if (!confirm('Удалить базу данных?')) return;
+      try {
+        const res = await fetch('/api/clear-db', { method: 'POST' });
+        if (!res.ok) throw new Error((await res.json()).msg);
+        alert('База очищена.');
+        location.reload();
+      } catch (e) {
+        alert('Ошибка: ' + e.message);
+      }
+    };
+    document.getElementById('toggle-ansible').onclick = () => {
+      const p = document.getElementById('ansible-panel');
+      p.style.display = p.style.display === 'none' ? 'block' : 'none';
+      if (p.style.display === 'block') loadAnsibleLog();
+    };
+    async function loadAnsibleLog() {
+      try {
+        const res = await fetch('/api/logs/ansible');
+        const lines = await res.json();
+        const logEl = document.getElementById('ansible-log');
+        logEl.innerHTML = '';
+        lines.forEach(line => {
+            const div = document.createElement('div');
+            div.innerHTML = line;
+            logEl.appendChild(div);
+        });
+        setTimeout(() => logEl.scrollTop = logEl.scrollHeight, 0);
+      } catch (e) {
+        document.getElementById('ansible-log').innerHTML = `<span style="color:#ff6b6b">Ошибка: ${e.message}</span>`;
+      }
+    }
+    setInterval(loadAnsibleLog, 3000);
+    document.getElementById('hosts-table-body').addEventListener('click', async (e) => {
+      if (e.target.closest('.btn-reboot')) {
+        const ip = e.target.closest('.btn-reboot').dataset.ip;
+        if (!ip || ip === '—') return alert('Неверный IP.');
+        if (!confirm(`Перезагрузить ${ip}?`)) return;
+        try {
+          const res = await fetch('/api/host/reboot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ip })
+          });
+          if (!res.ok) throw new Error((await res.json()).msg);
+          const data = await res.json();
+          alert(data.msg || 'Команда отправлена.');
+        } catch (e) {
+          alert('Ошибка: ' + e.message);
+        }
+      }
+      else if (e.target.closest('.btn-wol')) {
+        const mac = e.target.closest('.btn-wol').dataset.mac;
+        if (!mac || mac === '—') return alert('Неверный MAC-адрес.');
+        if (!confirm(`Отправить Wake-on-LAN на ${mac}?`)) return;
+        try {
+          const res = await fetch('/api/host/wol', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mac })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.msg || 'Неизвестная ошибка');
+          alert(data.msg || 'Команда WOL отправлена.');
+        } catch (e) {
+          alert('Ошибка: ' + e.message);
+        }
+      }
+      else if (e.target.closest('.btn-shutdown')) {
+        const ip = e.target.closest('.btn-shutdown').dataset.ip;
+        if (!ip || ip === '—') return alert('Неверный IP.');
+        if (!confirm(`Выключить ${ip}?`)) return;
+        try {
+          const res = await fetch('/api/host/shutdown', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ip })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.msg || 'Неизвестная ошибка');
+          alert(data.msg || 'Команда Shutdown отправлена.');
+        } catch (e) {
+          alert('Ошибка: ' + e.message);
+        }
+      }
+    });
+    document.getElementById('git-commit-push').onclick = async () => {
+      if (!confirm('Вы уверены, что хотите отправить изменения в Git-репозиторий?')) return;
+      try {
+        const res = await fetch('/api/git/commit-push', { method: 'POST' });
+        const data = await res.json();
+        if (res.ok) {
+          alert(data.msg || 'Изменения успешно отправлены в репозиторий.');
+        } else {
+          alert('Ошибка: ' + (data.msg || 'Неизвестная ошибка'));
+        }
+      } catch (e) {
+        alert('Ошибка: ' + e.message);
+      }
+    };
+    overlay.onclick = () => modals.forEach(closeModal);
+
+    // ==== Интеграция с Semaphore API ====
+    async function loadSemaphoreStatus() {
+      try {
+        const res = await fetch('/api/semaphore/status');
+        const data = await res.json();
+        const el = document.getElementById('semaphore-status');
+        if (!el) return;
+
+        if (data.status === 'error') {
+          el.innerHTML = `<i class="fas fa-exclamation-triangle" style="color:var(--danger)"></i> Ошибка API`;
+          return;
+        }
+
+        const icon = data.icon || '🟡';
+        const timePart = data.time ? ` ${data.time}` : '';
+        const msg = data.commit_message || 'Ansible запущен';
+
+        el.innerHTML = `
+          <div style="display:flex;align-items:center;gap:6px;font-size:0.9em;">
+            <span style="display:flex;align-items:center;">${icon}</span>
+            <span style="opacity:0.9;">${msg}${timePart}</span>
+          </div>
+        `;
+      } catch (e) {
+        console.error("Ошибка загрузки статуса Semaphore:", e);
+        const el = document.getElementById('semaphore-status');
+        if (el) {
+          el.innerHTML = `<i class="fas fa-exclamation-triangle" style="color:var(--danger)"></i> Ошибка загрузки`;
+        }
+      }
+    }
+
+    document.getElementById('run-ansible').onclick = async () => {
+      if (!confirm('Запустить Ansible на всех хостах?')) return;
+      try {
+        const res = await fetch('/api/semaphore/trigger', { method: 'POST' });
+        const data = await res.json();
+        if (res.ok) {
+          alert(`Ansible запущен! Task ID: ${data.task_id}`);
+          // Обновляем статус сразу после запуска
+          loadSemaphoreStatus();
+        } else {
+          alert('Ошибка: ' + (data.msg || 'Неизвестная ошибка'));
+        }
+      } catch (e) {
+        alert('Ошибка: ' + e.message);
+      }
+    };
+
+    // Автообновление статуса каждые 30 секунд
+    setInterval(loadSemaphoreStatus, 30000);
+    // Загружаем статус при загрузке страницы
+    document.addEventListener('DOMContentLoaded', loadSemaphoreStatus);
+  </script>
+</body>
+</html>
