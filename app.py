@@ -65,7 +65,9 @@ SEMAPHORE_TEMPLATE_ID = 1
 
 # Настройка базового логирования
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static')
+# Enable caching for static assets
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 3600
 
 # ==== Вспомогательные функции ====
 def get_db():
