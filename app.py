@@ -29,6 +29,9 @@ import json
 import requests
 from flask import Flask, render_template, request, jsonify, abort
 
+# Blueprint с функциями просмотра журналов
+from logtail import logtail_bp
+
 # ==== Конфигурация ====
 # Пути к основным файлам и настройкам приложения
 DB_PATH = os.getenv('DB_PATH', '/opt/pxewatch/pxe.db')
@@ -68,6 +71,9 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 app = Flask(__name__, static_folder='static')
 # Enable caching for static assets
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 3600
+
+# Регистрируем Blueprint логов, чтобы панель логов работала на том же хосте
+app.register_blueprint(logtail_bp)
 
 # ==== Вспомогательные функции ====
 def get_db():
