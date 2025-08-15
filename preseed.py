@@ -76,8 +76,8 @@ def api_save_template():
 def api_history():
     return jsonify(load_history())
 
-@preseed_bp.route('/preview', methods=['POST'])
-@preseed_bp.route('/generate', methods=['POST'])
+@preseed_bp.route('/preview', methods=['POST'], endpoint='preview')
+@preseed_bp.route('/generate', methods=['POST'], endpoint='generate')
 def preview_or_generate():
     try:
         raid_level = request.form.get('raid_level', '1')
