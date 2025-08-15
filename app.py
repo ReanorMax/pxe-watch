@@ -31,6 +31,7 @@ from flask import Flask, render_template, request, jsonify, abort
 
 # Blueprint с функциями просмотра журналов
 from logtail import logtail_bp
+from preseed import preseed_bp
 
 # ==== Конфигурация ====
 # Пути к основным файлам и настройкам приложения
@@ -74,6 +75,7 @@ app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 3600
 
 # Регистрируем Blueprint логов, чтобы панель логов работала на том же хосте
 app.register_blueprint(logtail_bp)
+app.register_blueprint(preseed_bp, url_prefix='/preseed')
 
 # ==== Вспомогательные функции ====
 def get_db():
