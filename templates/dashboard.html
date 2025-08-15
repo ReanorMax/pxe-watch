@@ -16,91 +16,108 @@
   
 </head>
 <body>
-  <header>
-    <h1><i class="fa fa-server"></i> PXE Dashboard</h1>
-    <div style="display:flex;gap:12px;align-items:center;">
-      <div class="header-group">
-        <a class="btn btn-semaphore" href="http://10.19.1.90:3000" target="_blank" rel="noopener noreferrer">
-          <i class="fa fa-external-link-alt"></i> Semaphore
-        </a>
-        <a class="btn btn-logtail" href="http://10.19.1.90:5004/logtail.html" target="_blank" rel="noopener noreferrer">
-          <i class="fas fa-file-alt"></i> Logtail
-        </a>
+    <header>
+      <h1><i class="fa fa-server"></i> PXE Dashboard</h1>
+      <div style="display:flex;gap:12px;align-items:center;">
+        <div class="header-group">
+          <a class="btn btn-semaphore" href="http://10.19.1.90:3000" target="_blank" rel="noopener noreferrer">
+            <i class="fa fa-external-link-alt"></i> Semaphore
+          </a>
+          <a class="btn btn-logtail" href="{{ url_for('logtail.logtail_dashboard') }}" target="_blank" rel="noopener noreferrer">
+            <i class="fas fa-file-alt"></i> Logtail
+          </a>
+        </div>
+        <div class="divider"></div>
+        <div class="header-group">
+          <button class="btn btn-danger" id="clear-db"><i class="fa fa-trash"></i> Очистить</button>
+        </div>
+        <div class="semaphore-status" id="semaphore-status">
+          <i class="fas fa-sync fa-spin"></i> Загрузка статуса...
+        </div>
       </div>
-      <div class="divider"></div>
-      <div class="header-group">
-        <button class="btn" id="edit-preseed"><i class="fa fa-edit"></i> Preseed</button>
-        <button class="btn" id="edit-dnsmasq"><i class="fa fa-network-wired"></i> DHCP / iPXE</button>
-        <button class="btn" id="edit-ipxe"><i class="fa fa-code"></i> iPXE</button>
+    </header>
+    <nav class="tab-nav">
+      <button class="tab-btn active" data-tab="hosts-tab"><i class="fa fa-server"></i> Hosts Management</button>
+      <button class="tab-btn" data-tab="config-tab"><i class="fa fa-cog"></i> Configuration</button>
+      <button class="tab-btn" data-tab="ansible-tab"><i class="fa fa-robot"></i> Ansible</button>
+    </nav>
+    <section id="hosts-tab" class="tab-content" style="display:block;">
+        <table>
+          <thead>
+            <tr>
+              <th>MAC</th>
+              <th>IP</th>
+              <th>Статус</th>
+              <th>Last Seen</th>
+              <th>Состояние</th>
+              <th>GUI</th>
+              <th>Действия</th>
+            </tr>
+          </thead>
+          <tbody id="hosts-table-body">
+            {% for h in hosts %}
+            <tr data-ip="{{ h.ip }}" data-mac="{{ h.mac }}">
+              <td>{{ h.mac }}</td>
+              <td>{{ h.ip }}</td>
+              <td>{{ h.stage }}</td>
+              <td><time datetime="{{ h.last }}">{{ h.last }}</time></td>
+              <td class="status {{ 'online' if h.online else 'offline' }}">
+                <i class="fa fa-circle"></i>
+                <span>{{ 'Online' if h.online else 'Offline' }}</span>
+              </td>
+              <td>
+                <a class="btn-portainer portainer-link" href="http://{{ h.ip }}:9000" target="_blank" rel="noopener noreferrer" title="Portainer" style="display: {% if h.ip and h.ip != '—' %}inline-flex{% else %}none{% endif %};">
+                  <i class="fab fa-docker"></i> Portainer
+                </a>
+              </td>
+              <td class="actions-cell">
+                <button class="btn-wol" data-mac="{{ h.mac }}" title="Включить (Wake-on-LAN)">
+                  <i class="fas fa-plug"></i> WOL
+                </button>
+                <button class="btn-shutdown" data-ip="{{ h.ip }}" title="Выключить">
+                  <i class="fas fa-power-off"></i> Shutdown
+                </button>
+                <button class="btn-reboot" data-ip="{{ h.ip }}" title="Перезагрузить">
+                  <i class="fa fa-sync-alt"></i> reboot
+                </button>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+    </section>
+    <section id="config-tab" class="tab-content" style="display:none;">
+      <h2>System Configuration</h2>
+      <p>Manage PXE boot and network configuration files</p>
+      <div class="config-grid">
+        <div class="config-card" id="edit-preseed">
+          <i class="fa fa-file-code"></i>
+          <h3>Preseed Configuration</h3>
+          <p>Debian automated installation configuration</p>
+        </div>
+        <div class="config-card" id="edit-dnsmasq">
+          <i class="fa fa-network-wired"></i>
+          <h3>DHCP / iPXE</h3>
+          <p>Network boot and DHCP configuration</p>
+        </div>
+        <div class="config-card" id="edit-ipxe">
+          <i class="fa fa-code"></i>
+          <h3>iPXE Scripts</h3>
+          <p>Boot scripts and automation</p>
+        </div>
       </div>
-      <div class="divider"></div>
-      <div class="header-group">
-        <button class="btn btn-danger" id="clear-db"><i class="fa fa-trash"></i> Очистить</button>
-        <button class="btn" id="toggle-ansible"><i class="fa fa-robot"></i> Ansible</button>
-        <button class="btn" id="run-ansible" style="background:#43b581">
-          <i class="fa fa-play"></i> Запустить Ansible
-        </button>
+    </section>
+    <section id="ansible-tab" class="tab-content" style="display:none;">
+      <h3><i class="fa fa-robot"></i> Ansible</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
+        <button class="btn" id="edit-inventory"><i class="fa fa-list"></i> inventory.ini</button>
+        <button class="btn" id="edit-playbook"><i class="fa fa-file-code"></i> playbook.yml</button>
+        <button class="btn" id="manage-files"><i class="fa fa-folder"></i> Файлы</button>
+        <button class="btn" id="run-ansible" style="background:#43b581"><i class="fa fa-play"></i> Запустить Ansible</button>
       </div>
-      <div class="semaphore-status" id="semaphore-status">
-        <i class="fas fa-sync fa-spin"></i> Загрузка статуса...
-      </div>
-    </div>
-  </header>
-  <div id="ansible-panel" style="margin: 24px 0; padding: 16px; border-radius: 8px; background: var(--bg); border: 1px solid var(--border); display: none;">
-    <h3><i class="fa fa-robot"></i> Ansible</h3>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
-      <button class="btn" id="edit-inventory"><i class="fa fa-list"></i> inventory.ini</button>
-      <button class="btn" id="edit-playbook"><i class="fa fa-file-code"></i> playbook.yml</button>
-      <button class="btn" id="manage-files"><i class="fa fa-folder"></i> Файлы</button>
-    </div>
-    <h4><i class="fa fa-terminal"></i> Журнал выполнения Ansible</h4>
-    <div class="log-viewer" id="ansible-log"></div>
-  </div>
-  <div class="container">
-    <table>
-      <thead>
-        <tr>
-          <th>MAC</th>
-          <th>IP</th>
-          <th>Статус</th>
-          <th>Last Seen</th>
-          <th>Состояние</th>
-          <th>GUI</th>
-          <th>Действия</th>
-        </tr>
-      </thead>
-      <tbody id="hosts-table-body">
-        {% for h in hosts %}
-        <tr data-ip="{{ h.ip }}" data-mac="{{ h.mac }}">
-          <td>{{ h.mac }}</td>
-          <td>{{ h.ip }}</td>
-          <td>{{ h.stage }}</td>
-          <td><time datetime="{{ h.last }}">{{ h.last }}</time></td>
-          <td class="status {{ 'online' if h.online else 'offline' }}">
-            <i class="fa fa-circle"></i>
-            <span>{{ 'Online' if h.online else 'Offline' }}</span>
-          </td>
-          <td>
-            <a class="btn-portainer portainer-link" href="http://{{ h.ip }}:9000" target="_blank" rel="noopener noreferrer" title="Portainer" style="display: {% if h.ip and h.ip != '—' %}inline-flex{% else %}none{% endif %};">
-              <i class="fab fa-docker"></i> Portainer
-            </a>
-          </td>
-          <td class="actions-cell">
-            <button class="btn-wol" data-mac="{{ h.mac }}" title="Включить (Wake-on-LAN)">
-              <i class="fas fa-plug"></i> WOL
-            </button>
-            <button class="btn-shutdown" data-ip="{{ h.ip }}" title="Выключить">
-              <i class="fas fa-power-off"></i> Shutdown
-            </button>
-            <button class="btn-reboot" data-ip="{{ h.ip }}" title="Перезагрузить">
-              <i class="fa fa-sync-alt"></i> reboot
-            </button>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+      <h4><i class="fa fa-terminal"></i> Журнал выполнения Ansible</h4>
+      <div class="log-viewer" id="ansible-log"></div>
+    </section>
   <div id="overlay"></div>
   <!-- Модальные окна -->
   <div class="modal" id="preseed-modal">

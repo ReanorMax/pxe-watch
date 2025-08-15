@@ -84,6 +84,16 @@
     }
     setInterval(refreshTable, 30000);
     document.addEventListener('DOMContentLoaded', updatePortainerLinks);
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.querySelectorAll('.tab-content').forEach(sec => sec.style.display = 'none');
+        const target = document.getElementById(btn.dataset.tab);
+        if (target) target.style.display = 'block';
+        if (btn.dataset.tab === 'ansible-tab') loadAnsibleLog();
+      });
+    });
     async function openModalWithContent(modalId, apiUrl, contentElementId, isPlaybook = false) {
       const modal = document.getElementById(modalId);
       try {
@@ -196,11 +206,6 @@
         alert('Ошибка: ' + e.message);
       }
     };
-    document.getElementById('toggle-ansible').onclick = () => {
-      const p = document.getElementById('ansible-panel');
-      p.style.display = p.style.display === 'none' ? 'block' : 'none';
-      if (p.style.display === 'block') loadAnsibleLog();
-    };
     async function loadAnsibleLog() {
       try {
         const res = await fetch('/api/logs/ansible');
@@ -217,7 +222,10 @@
         document.getElementById('ansible-log').innerHTML = `<span style="color:#ff6b6b">Ошибка: ${e.message}</span>`;
       }
     }
-    setInterval(loadAnsibleLog, 3000);
+    setInterval(() => {
+      const tab = document.getElementById('ansible-tab');
+      if (tab && tab.style.display !== 'none') loadAnsibleLog();
+    }, 3000);
     document.getElementById('hosts-table-body').addEventListener('click', async (e) => {
       if (e.target.closest('.btn-reboot')) {
         const ip = e.target.closest('.btn-reboot').dataset.ip;
