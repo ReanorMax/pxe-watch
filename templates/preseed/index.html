@@ -1025,27 +1025,29 @@
             goToStep(1);
         }
         function setupModeSwitches() {
+            function updateVisibility() {
+                const staticFields = document.getElementById('static-fields');
+                if (staticFields) {
+                    const netMode = document.querySelector('input[name="net_mode"]:checked').value;
+                    staticFields.style.display = netMode === 'static' ? 'block' : 'none';
+                }
+                const mirrorMode = document.querySelector('input[name="mirror_mode"]:checked').value;
+                document.getElementById('default-mirror').style.display = mirrorMode === 'default' ? 'block' : 'none';
+                document.getElementById('custom-mirrors').style.display = mirrorMode === 'custom' ? 'block' : 'none';
+                document.getElementById('ipxe-fields').style.display = document.getElementById('enable_ipxe').checked ? 'block' : 'none';
+                document.getElementById('ansible-fields').style.display = document.getElementById('enable_ansible').checked ? 'block' : 'none';
+                document.getElementById('font-settings').style.display = document.getElementById('enable_font').checked ? 'block' : 'none';
+            }
             document.querySelectorAll('input[name="net_mode"]').forEach(radio => {
-                radio.addEventListener('change', function() {
-                    const staticFields = document.getElementById('static-fields');
-                    staticFields.style.display = this.value === 'static' ? 'block' : 'none';
-                });
+                radio.addEventListener('change', updateVisibility);
             });
             document.querySelectorAll('input[name="mirror_mode"]').forEach(radio => {
-                radio.addEventListener('change', function() {
-                    document.getElementById('default-mirror').style.display = this.value === 'default' ? 'block' : 'none';
-                    document.getElementById('custom-mirrors').style.display = this.value === 'custom' ? 'block' : 'none';
-                });
+                radio.addEventListener('change', updateVisibility);
             });
-            document.getElementById('enable_ipxe').addEventListener('change', function() {
-                document.getElementById('ipxe-fields').style.display = this.checked ? 'block' : 'none';
-            });
-            document.getElementById('enable_ansible').addEventListener('change', function() {
-                document.getElementById('ansible-fields').style.display = this.checked ? 'block' : 'none';
-            });
-            document.getElementById('enable_font').addEventListener('change', function() {
-                document.getElementById('font-settings').style.display = this.checked ? 'block' : 'none';
-            });
+            document.getElementById('enable_ipxe').addEventListener('change', updateVisibility);
+            document.getElementById('enable_ansible').addEventListener('change', updateVisibility);
+            document.getElementById('enable_font').addEventListener('change', updateVisibility);
+            updateVisibility();
             document.querySelectorAll('.toggle-header').forEach(header => {
                 header.addEventListener('click', function() {
                     const content = this.nextElementSibling;
