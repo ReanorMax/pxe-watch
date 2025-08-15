@@ -1,0 +1,328 @@
+    let playbookEditor;
+    document.addEventListener('DOMContentLoaded', () => {
+      playbookEditor = CodeMirror(document.getElementById('playbook-editor'), {
+        value: "",
+        mode: "text/x-yaml",
+        theme: "dracula",
+        lineNumbers: true,
+        lineWrapping: true,
+        indentUnit: 2,
+        tabSize: 2,
+        indentWithTabs: false,
+        styleActiveLine: true,
+        matchBrackets: true,
+        autoCloseBrackets: true,
+        extraKeys: { Tab: cm => cm.replaceSelection("  ", "end") }
+      });
+    });
+    const overlay = document.getElementById('overlay');
+    const modals = document.querySelectorAll('.modal');
+    function openModal(modal) {
+      overlay.style.display = 'block';
+      modal.style.display = 'flex';
+    }
+    function closeModal(modal) {
+      overlay.style.display = 'none';
+      modal.style.display = 'none';
+    }
+    function updatePortainerLinks() {
+        const rows = document.querySelectorAll('#hosts-table-body tr');
+        rows.forEach(row => {
+            const ip = row.dataset.ip;
+            const portainerLink = row.querySelector('.portainer-link');
+            if (portainerLink) {
+                if (ip && ip !== '—') {
+                    const url = `http://${ip}:9000`;
+                    portainerLink.href = url;
+                    portainerLink.style.display = 'inline-flex';
+                    portainerLink.title = `Portainer (${url})`;
+                } else {
+                    portainerLink.style.display = 'none';
+                    portainerLink.href = '#';
+                    portainerLink.title = 'Portainer (IP неизвестен)';
+                }
+            }
+        });
+    }
+    async function refreshTable() {
+      try {
+        const res = await fetch('/');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const html = await res.text();
+        const parser = new DOMParser();
+        const newDoc = parser.parseFromString(html, 'text/html');
+        const newRows = newDoc.querySelectorAll('#hosts-table-body tr');
+        const currentTbody = document.getElementById('hosts-table-body');
+        const currentMap = {};
+        currentTbody.querySelectorAll('tr').forEach(tr => {
+          const ip = tr.dataset.ip;
+          if (ip) currentMap[ip] = tr;
+        });
+        const newMap = {};
+        newRows.forEach(tr => {
+          const ip = tr.dataset.ip;
+          if (ip) newMap[ip] = tr;
+        });
+        Object.keys(currentMap).forEach(ip => {
+          if (!newMap[ip]) currentMap[ip].remove();
+        });
+        newRows.forEach(newTr => {
+          const ip = newTr.dataset.ip;
+          if (ip) {
+            const existing = currentMap[ip];
+            if (existing) {
+              existing.innerHTML = newTr.innerHTML;
+            } else {
+              currentTbody.appendChild(newTr);
+            }
+          }
+        });
+        updatePortainerLinks();
+      } catch (e) {
+        console.warn('Ошибка обновления таблицы:', e);
+      }
+    }
+    setInterval(refreshTable, 30000);
+    document.addEventListener('DOMContentLoaded', updatePortainerLinks);
+    async function openModalWithContent(modalId, apiUrl, contentElementId, isPlaybook = false) {
+      const modal = document.getElementById(modalId);
+      try {
+        const res = await fetch(apiUrl);
+        if (!res.ok) throw new Error();
+        const content = await res.text();
+        if (isPlaybook && playbookEditor) {
+          playbookEditor.setValue(content);
+          setTimeout(() => playbookEditor.refresh(), 100);
+        } else {
+          const el = document.getElementById(contentElementId);
+          if (el) el.value = content;
+        }
+        openModal(modal);
+      } catch (e) {
+        alert(`Ошибка загрузки: ${e.message}`);
+      }
+    }
+    async function saveContentToApi(apiUrl, contentElementId, successCallback, isPlaybook = false) {
+      try {
+        const content = isPlaybook && playbookEditor
+          ? playbookEditor.getValue()
+          : document.getElementById(contentElementId).value;
+        const res = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body: content
+        });
+        if (!res.ok) throw new Error((await res.json()).msg);
+        alert('Сохранено.');
+        if (successCallback) successCallback();
+      } catch (e) {
+        alert('Ошибка сохранения: ' + e.message);
+      }
+    }
+    [
+      { btn: 'edit-preseed', modal: 'preseed-modal', api: '/api/preseed', elem: 'preseed-content' },
+      { btn: 'edit-ipxe', modal: 'ipxe-modal', api: '/api/ipxe', elem: 'ipxe-content' },
+      { btn: 'edit-dnsmasq', modal: 'dnsmasq-modal', api: '/api/dnsmasq', elem: 'dnsmasq-content' },
+      { btn: 'edit-inventory', modal: 'inventory-modal', api: '/api/ansible/inventory', elem: 'inventory-content' },
+      { btn: 'edit-playbook', modal: 'playbook-modal', api: '/api/ansible/playbook', isPlaybook: true }
+    ].forEach(config => {
+      const btn = document.getElementById(config.btn);
+      if (btn) btn.onclick = () => openModalWithContent(
+        config.modal,
+        config.api,
+        config.elem,
+        config.isPlaybook
+      );
+    });
+    document.querySelectorAll('.close-modal').forEach(btn => {
+      btn.onclick = () => {
+        const modal = document.getElementById(btn.dataset.modal);
+        if (modal) closeModal(modal);
+      };
+    });
+    function setupSaveButton(buttonId, apiPath, contentId, onSuccess, isPlaybook = false) {
+      document.getElementById(buttonId).onclick = () => {
+        saveContentToApi(apiPath, contentId, onSuccess, isPlaybook);
+      };
+    }
+    setupSaveButton('save-preseed', '/api/preseed', 'preseed-content', () => closeModal(document.getElementById('preseed-modal')));
+    setupSaveButton('save-ipxe', '/api/ipxe', 'ipxe-content', () => closeModal(document.getElementById('ipxe-modal')));
+    setupSaveButton('save-dnsmasq', '/api/dnsmasq', 'dnsmasq-content', () => closeModal(document.getElementById('dnsmasq-modal')));
+    setupSaveButton('save-playbook', '/api/ansible/playbook', null, () => closeModal(document.getElementById('playbook-modal')), true);
+    setupSaveButton('save-inventory', '/api/ansible/inventory', 'inventory-content', () => closeModal(document.getElementById('inventory-modal')));
+    document.getElementById('manage-files').onclick = async () => {
+        const listBody = document.getElementById('files-simple-list-body');
+        listBody.innerHTML = '<tr><td colspan="3" style="text-align: center;">Загрузка...</td></tr>';
+        openModal(document.getElementById('files-modal'));
+        try {
+            const res = await fetch('/api/ansible/files');
+            const files = await res.json();
+            listBody.innerHTML = '';
+            if (files.error) {
+                 listBody.innerHTML = `<tr><td colspan="3" style="color:var(--danger);">Ошибка: ${files.error}</td></tr>`;
+                 return;
+            }
+            if (files.length === 0) {
+                 listBody.innerHTML = '<tr><td colspan="3" style="text-align: center; font-style: italic;">Файлы не найдены</td></tr>';
+                 return;
+            }
+            files.forEach(file => {
+                const tr = document.createElement('tr');
+                const escapedName = file.name.replace(/&/g, "&amp;").replace(/</g, "<").replace(/>/g, ">").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+                tr.innerHTML = `<td title="${escapedName}">${escapedName}</td><td>${file.size}</td><td>${file.modified}</td>`;
+                listBody.appendChild(tr);
+            });
+        } catch (e) {
+            console.error("Ошибка при загрузке списка файлов:", e);
+            listBody.innerHTML = `<tr><td colspan="3" style="color:var(--danger);">Ошибка загрузки: ${e.message}</td></tr>`;
+        }
+    };
+    document.getElementById('add-dhcp-host').onclick = () => {
+      const mac = prompt('MAC:');
+      const ip = prompt('IP:');
+      if (mac && ip) {
+        const textarea = document.getElementById('dnsmasq-content');
+        textarea.value = `dhcp-host=${mac},${ip},12h\n${textarea.value}`;
+      }
+    };
+    document.getElementById('clear-db').onclick = async () => {
+      if (!confirm('Удалить базу данных?')) return;
+      try {
+        const res = await fetch('/api/clear-db', { method: 'POST' });
+        if (!res.ok) throw new Error((await res.json()).msg);
+        alert('База очищена.');
+        location.reload();
+      } catch (e) {
+        alert('Ошибка: ' + e.message);
+      }
+    };
+    document.getElementById('toggle-ansible').onclick = () => {
+      const p = document.getElementById('ansible-panel');
+      p.style.display = p.style.display === 'none' ? 'block' : 'none';
+      if (p.style.display === 'block') loadAnsibleLog();
+    };
+    async function loadAnsibleLog() {
+      try {
+        const res = await fetch('/api/logs/ansible');
+        const lines = await res.json();
+        const logEl = document.getElementById('ansible-log');
+        logEl.innerHTML = '';
+        lines.forEach(line => {
+            const div = document.createElement('div');
+            div.innerHTML = line;
+            logEl.appendChild(div);
+        });
+        setTimeout(() => logEl.scrollTop = logEl.scrollHeight, 0);
+      } catch (e) {
+        document.getElementById('ansible-log').innerHTML = `<span style="color:#ff6b6b">Ошибка: ${e.message}</span>`;
+      }
+    }
+    setInterval(loadAnsibleLog, 3000);
+    document.getElementById('hosts-table-body').addEventListener('click', async (e) => {
+      if (e.target.closest('.btn-reboot')) {
+        const ip = e.target.closest('.btn-reboot').dataset.ip;
+        if (!ip || ip === '—') return alert('Неверный IP.');
+        if (!confirm(`Перезагрузить ${ip}?`)) return;
+        try {
+          const res = await fetch('/api/host/reboot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ip })
+          });
+          if (!res.ok) throw new Error((await res.json()).msg);
+          const data = await res.json();
+          alert(data.msg || 'Команда отправлена.');
+        } catch (e) {
+          alert('Ошибка: ' + e.message);
+        }
+      }
+      else if (e.target.closest('.btn-wol')) {
+        const mac = e.target.closest('.btn-wol').dataset.mac;
+        if (!mac || mac === '—') return alert('Неверный MAC-адрес.');
+        if (!confirm(`Отправить Wake-on-LAN на ${mac}?`)) return;
+        try {
+          const res = await fetch('/api/host/wol', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mac })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.msg || 'Неизвестная ошибка');
+          alert(data.msg || 'Команда WOL отправлена.');
+        } catch (e) {
+          alert('Ошибка: ' + e.message);
+        }
+      }
+      else if (e.target.closest('.btn-shutdown')) {
+        const ip = e.target.closest('.btn-shutdown').dataset.ip;
+        if (!ip || ip === '—') return alert('Неверный IP.');
+        if (!confirm(`Выключить ${ip}?`)) return;
+        try {
+          const res = await fetch('/api/host/shutdown', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ip })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.msg || 'Неизвестная ошибка');
+          alert(data.msg || 'Команда Shutdown отправлена.');
+        } catch (e) {
+          alert('Ошибка: ' + e.message);
+        }
+      }
+    });
+    overlay.onclick = () => modals.forEach(closeModal);
+
+    // ==== Интеграция с Semaphore API ====
+    async function loadSemaphoreStatus() {
+      try {
+        const res = await fetch('/api/semaphore/status');
+        const data = await res.json();
+        const el = document.getElementById('semaphore-status');
+        if (!el) return;
+
+        if (data.status === 'error') {
+          el.innerHTML = `<i class="fas fa-exclamation-triangle" style="color:var(--danger)"></i> Ошибка API`;
+          return;
+        }
+
+        const icon = data.icon || '🟡';
+        const timePart = data.time ? ` ${data.time}` : '';
+        const msg = data.commit_message || 'Ansible запущен';
+
+        el.innerHTML = `
+          <div style="display:flex;align-items:center;gap:6px;font-size:0.9em;">
+            <span style="display:flex;align-items:center;">${icon}</span>
+            <span style="opacity:0.9;">${msg}${timePart}</span>
+          </div>
+        `;
+      } catch (e) {
+        console.error("Ошибка загрузки статуса Semaphore:", e);
+        const el = document.getElementById('semaphore-status');
+        if (el) {
+          el.innerHTML = `<i class="fas fa-exclamation-triangle" style="color:var(--danger)"></i> Ошибка загрузки`;
+        }
+      }
+    }
+
+    document.getElementById('run-ansible').onclick = async () => {
+      if (!confirm('Запустить Ansible на всех хостах?')) return;
+      try {
+        const res = await fetch('/api/semaphore/trigger', { method: 'POST' });
+        const data = await res.json();
+        if (res.ok) {
+          alert(`Ansible запущен! Task ID: ${data.task_id}`);
+          // Обновляем статус сразу после запуска
+          loadSemaphoreStatus();
+        } else {
+          alert('Ошибка: ' + (data.msg || 'Неизвестная ошибка'));
+        }
+      } catch (e) {
+        alert('Ошибка: ' + e.message);
+      }
+    };
+
+    // Автообновление статуса каждые 30 секунд
+    setInterval(loadSemaphoreStatus, 30000);
+    // Загружаем статус при загрузке страницы
+    document.addEventListener('DOMContentLoaded', loadSemaphoreStatus);
