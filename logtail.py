@@ -82,10 +82,18 @@ def init_logtail_db():
         )
 
 
-@logtail_bp.before_app_first_request
+# Flask 1.x doesn't provide `before_app_first_request` for blueprints.
+# Use a regular `before_app_request` hook and run the initialisation once.
+_db_initialised = False
+
+
+@logtail_bp.before_app_request
 def _init_db() -> None:
-    """Initialise DB once application starts."""
-    init_logtail_db()
+    """Initialise DB once per application startup."""
+    global _db_initialised
+    if not _db_initialised:
+        init_logtail_db()
+        _db_initialised = True
 
 
 def load_inventory():

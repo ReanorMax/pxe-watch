@@ -116,6 +116,9 @@
     .btn-logtail { background: var(--logtail); padding: 6px 10px; font-size: 0.85em; }
     .btn-logtail:hover { background: #7b1fa2; }
     .btn-logtail i { font-size: 0.9em; }
+    .btn-preseed { background: var(--orange); padding: 6px 10px; font-size: 0.85em; }
+    .btn-preseed:hover { background: #fb8c00; }
+    .btn-preseed i { font-size: 0.9em; }
     .container { padding: 24px; }
     table {
       width: 100%;
