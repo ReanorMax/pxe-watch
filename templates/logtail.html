@@ -1,0 +1,1125 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>LogTail Pro</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    :root {
+      --primary-color: #4361ee;
+      --secondary-color: #3f37c9;
+      --success-color: #4cc9f0;
+      --warning-color: #f72585;
+      --danger-color: #e63946;
+      --light-bg: #f8f9fa;
+      --sidebar-bg: #ffffff;
+      --panel-bg: #ffffff;
+      --text-primary: #333;
+      --text-secondary: #6c757d;
+    }
+
+    body {
+      background-color: var(--light-bg);
+      color: var(--text-primary);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      padding-top: 1rem;
+    }
+
+    .sidebar {
+      background-color: var(--sidebar-bg);
+      border-radius: 10px;
+      padding: 15px;
+      height: calc(100vh - 2rem);
+      overflow-y: auto;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+      border: 1px solid rgba(0,0,0,0.1);
+    }
+
+    .main-content {
+      background-color: var(--panel-bg);
+      border-radius: 10px;
+      padding: 15px;
+      height: calc(100vh - 2rem);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+      border: 1px solid rgba(0,0,0,0.1);
+    }
+
+    #logPanel, #journalPanel {
+      font-family: 'Consolas', 'Courier New', monospace;
+      height: 60vh;
+      overflow-y: scroll;
+      background: #000;
+      color: #00ff00;
+      padding: 15px;
+      border-radius: 8px;
+      border: 1px solid #444;
+      white-space: pre-wrap;
+      font-size: 14px;
+      line-height: 1.4;
+    }
+
+    .card {
+      background-color: rgba(255,255,255,0.95);
+      border: 1px solid rgba(0,0,0,0.1);
+      border-radius: 8px;
+      margin-bottom: 15px;
+    }
+
+    .card-header {
+      background-color: rgba(255,255,255,0.95);
+      border-bottom: 1px solid rgba(0,0,0,0.1);
+      font-weight: 600;
+      padding: 12px 15px;
+    }
+
+    .btn-primary {
+      background-color: var(--primary-color);
+      border-color: var(--primary-color);
+    }
+
+    .btn-primary:hover {
+      background-color: var(--secondary-color);
+      border-color: var(--secondary-color);
+    }
+
+    .btn-success {
+      background-color: #2a9d8f;
+      border-color: #2a9d8f;
+    }
+
+    .list-group-item {
+      background-color: rgba(255,255,255,0.95);
+      border: 1px solid rgba(0,0,0,0.1);
+      color: var(--text-primary);
+      margin-bottom: 5px;
+      border-radius: 6px !important;
+    }
+
+    .form-control, .form-select {
+      background-color: rgba(255,255,255,0.95);
+      border: 1px solid rgba(0,0,0,0.1);
+      color: var(--text-primary);
+    }
+
+    .input-group-text {
+      background-color: rgba(255,255,255,0.95);
+      border: 1px solid rgba(0,0,0,0.1);
+      color: var(--text-primary);
+    }
+
+    .badge {
+      font-weight: 500;
+    }
+
+    .log-color-red { color: #ff6b6b; }
+    .log-color-green { color: #51cf66; }
+    .log-color-yellow { color: #ffd43b; }
+    .log-color-blue { color: #339af0; }
+    .log-color-magenta { color: #cc5de8; }
+    .log-color-cyan { color: #22b8cf; }
+    .log-color-white { color: #f8f9fa; }
+    .log-color-bright_red { color: #ff8787; }
+    .log-color-bright_green { color: #8ce99a; }
+    .log-color-bright_yellow { color: #ffec99; }
+    .log-color-bright_blue { color: #74c0fc; }
+    .log-color-bright_magenta { color: #da77f2; }
+    .log-color-bright_cyan { color: #72c9d4; }
+    .log-color-bright_white { color: #ffffff; }
+    .log-color-bg_red { background-color: #ff6b6b; color: #000000; }
+    .log-color-bg_green { background-color: #51cf66; color: #000000; }
+    .log-color-bg_yellow { background-color: #ffd43b; color: #000000; }
+    .log-color-bg_blue { background-color: #339af0; color: #ffffff; }
+    .log-color-bg_magenta { background-color: #cc5de8; color: #ffffff; }
+    .log-color-bg_cyan { background-color: #22b8cf; color: #000000; }
+
+    .journal-color-red { color: #ff4444; }
+    .journal-color-green { color: #44ff44; }
+    .journal-color-yellow { color: #ffff44; }
+    .journal-color-blue { color: #4444ff; }
+    .journal-color-magenta { color: #ff44ff; }
+    .journal-color-cyan { color: #44ffff; }
+    .journal-color-white { color: #ffffff; }
+    .journal-color-bright_red { color: #ff6666; }
+    .journal-color-bright_green { color: #66ff66; }
+    .journal-color-bright_yellow { color: #ffff66; }
+    .journal-color-bright_blue { color: #6666ff; }
+
+    .color-preview {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border-radius: 4px;
+      margin-right: 8px;
+      border: 1px solid rgba(0,0,0,0.3);
+    }
+
+    .color-red { background-color: #ff6b6b; }
+    .color-green { background-color: #51cf66; }
+    .color-yellow { background-color: #ffd43b; }
+    .color-blue { background-color: #339af0; }
+    .color-magenta { background-color: #cc5de8; }
+    .color-cyan { background-color: #22b8cf; }
+    .color-bright_red { background-color: #ff8787; }
+    .color-bright_green { background-color: #8ce99a; }
+    .color-bright_yellow { background-color: #ffec99; }
+    .color-bright_blue { background-color: #74c0fc; }
+
+    .control-panel {
+      background: linear-gradient(135deg, rgba(67, 97, 238, 0.1), rgba(58, 55, 201, 0.1));
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      border: 1px solid rgba(67, 97, 238, 0.2);
+    }
+
+    .status-indicator {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 8px;
+    }
+
+    .status-connected {
+      background-color: #51cf66;
+      box-shadow: 0 0 10px #51cf66;
+    }
+
+    .status-disconnected {
+      background-color: #ff6b6b;
+    }
+
+    .status-paused {
+      background-color: #ffd43b;
+    }
+
+    .highlight {
+      background-color: #ffd43b !important;
+      color: #000000 !important;
+    }
+
+    .auto-scroll-btn {
+      position: absolute;
+      right: 20px;
+      top: 20px;
+      z-index: 100;
+      display: none;
+    }
+
+    .search-highlight {
+      background-color: #ffd43b;
+      color: #000;
+      padding: 0 2px;
+      border-radius: 3px;
+    }
+
+    .collapsible-section {
+      margin-bottom: 15px;
+    }
+
+    .collapsible-header {
+      cursor: pointer;
+      user-select: none;
+      padding: 10px;
+      background-color: rgba(67, 97, 238, 0.1);
+      border-radius: 5px;
+      margin-bottom: 10px;
+    }
+
+    .collapsible-content {
+      display: none;
+    }
+
+    .collapsible-content.show {
+      display: block;
+    }
+
+    .host-item {
+      cursor: pointer;
+      padding: 10px;
+      border-radius: 5px;
+      margin-bottom: 5px;
+      background-color: rgba(255,255,255,0.8);
+      border: 1px solid rgba(0,0,0,0.1);
+    }
+
+    .host-item:hover {
+      background-color: rgba(67, 97, 238, 0.1);
+    }
+
+    .host-item.active {
+      background-color: var(--primary-color);
+      color: white;
+    }
+
+    .path-item {
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 5px;
+      margin-bottom: 5px;
+      background-color: rgba(255,255,255,0.8);
+      border: 1px solid rgba(0,0,0,0.1);
+    }
+
+    .path-item:hover {
+      background-color: rgba(67, 97, 238, 0.1);
+    }
+
+    .path-item.active {
+      background-color: var(--primary-color);
+      color: white;
+    }
+
+    .section-divider {
+      border-top: 1px solid rgba(0,0,0,0.1);
+      margin: 15px 0;
+    }
+
+    .tab-button {
+      cursor: pointer;
+      padding: 10px 20px;
+      border: 1px solid rgba(0,0,0,0.1);
+      border-bottom: none;
+      background-color: rgba(255,255,255,0.8);
+      border-radius: 5px 5px 0 0;
+      margin-right: 5px;
+    }
+
+    .tab-button.active {
+      background-color: var(--primary-color);
+      color: white;
+      font-weight: bold;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .service-status {
+      display: inline-block;
+      padding: 0.25em 0.5em;
+      border-radius: 4px;
+      font-weight: bold;
+      margin-left: 10px;
+    }
+
+    .service-status.running {
+      background-color: #d4edda;
+      color: #155724;
+    }
+
+    .service-status.stopped {
+      background-color: #f8d7da;
+      color: #721c24;
+    }
+
+    .service-status.unknown {
+      background-color: #fff3cd;
+      color: #856404;
+    }
+
+    .filter-chips-container {
+      margin-bottom: 10px;
+    }
+
+    .filter-chip {
+      display: inline-block;
+      background-color: #e9ecef;
+      border: 1px solid #ced4da;
+      border-radius: 15px;
+      padding: 2px 10px;
+      margin-right: 5px;
+      margin-bottom: 5px;
+      font-size: 0.85rem;
+    }
+
+    .filter-chip .remove-btn {
+      margin-left: 5px;
+      cursor: pointer;
+      color: #6c757d;
+    }
+
+    .filter-chips-container {
+      min-height: 30px;
+    }
+  </style>
+</head>
+<body>
+<div class="container-fluid">
+  <div class="row">
+    <div class="col-md-3">
+      <div class="sidebar">
+        <h3 class="mb-4 text-center">
+          <i class="fas fa-terminal me-2"></i>LogTail Pro
+        </h3>
+        <!-- Хосты -->
+        <div class="mb-4">
+          <h5 class="mb-3"><i class="fas fa-server me-2"></i>Servers</h5>
+          <div id="hostList"></div>
+        </div>
+
+        <div class="section-divider"></div>
+        <!-- Пути логов -->
+        <div class="mb-4">
+          <h5 class="mb-3"><i class="fas fa-file-alt me-2"></i>Log Paths</h5>
+          <div class="mb-3">
+            <input id="logPathName" class="form-control form-control-sm mb-2" placeholder="Name (optional)">
+            <input id="logPath" class="form-control form-control-sm mb-2" placeholder="/var/log/syslog">
+            <button id="savePathBtn" class="btn btn-primary btn-sm w-100">
+              <i class="fas fa-plus me-1"></i>Add Path
+            </button>
+          </div>
+          <div id="savedPathsList"></div>
+        </div>
+
+        <div class="section-divider"></div>
+        <!-- Правила раскраски -->
+        <div class="mb-4">
+          <h5 class="mb-3"><i class="fas fa-palette me-2"></i>Color Rules</h5>
+          <div class="mb-3">
+            <div class="input-group input-group-sm">
+              <input id="colorKeyword" class="form-control" placeholder="Keyword">
+              <select id="colorSelect" class="form-select form-select-sm">
+                <option value="red">Red</option>
+                <option value="green">Green</option>
+                <option value="yellow">Yellow</option>
+                <option value="blue">Blue</option>
+                <option value="magenta">Magenta</option>
+                <option value="cyan">Cyan</option>
+                <option value="bright_red">Bright Red</option>
+                <option value="bright_green">Bright Green</option>
+                <option value="bright_yellow">Bright Yellow</option>
+                <option value="bright_blue">Bright Blue</option>
+              </select>
+              <button id="addColorRuleBtn" class="btn btn-success btn-sm">
+                <i class="fas fa-plus"></i>
+              </button>
+            </div>
+          </div>
+          <div id="colorRulesList"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-9">
+      <div class="main-content">
+        <div class="mb-3">
+          <button class="tab-button active" onclick="switchTab('logFiles')">Log Files</button>
+          <button class="tab-button" onclick="switchTab('journal')">Journal Services</button>
+        </div>
+        <div id="logFilesTab" class="tab-content active">
+          <div class="control-panel">
+            <h4 class="mb-3"><i class="fas fa-sliders-h me-2"></i>Log Controls</h4>
+            <div class="row mb-3">
+              <div class="col-md-6">
+                <div class="input-group">
+                  <span class="input-group-text"><i class="fas fa-search"></i></span>
+                  <input id="grep" class="form-control" placeholder="Include: error, user login...">
+                  <button class="btn btn-outline-light" type="button" id="searchBtn">
+                    <i class="fas fa-play"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="input-group">
+                  <span class="input-group-text"><i class="fas fa-ban"></i></span>
+                  <input id="excludePattern" class="form-control" placeholder="Exclude: debug, info...">
+                </div>
+              </div>
+            </div>
+            <div class="row mb-3">
+              <div class="col-md-4">
+                <div class="input-group">
+                  <span class="input-group-text">Level</span>
+                  <select id="logLevel" class="form-select">
+                    <option value="">All Levels</option>
+                    <option value="ERROR">ERROR</option>
+                    <option value="WARN">WARN</option>
+                    <option value="INFO">INFO</option>
+                    <option value="DEBUG">DEBUG</option>
+                  </select>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="input-group">
+                  <span class="input-group-text">Lines</span>
+                  <input id="linesCount" type="number" class="form-control" value="100" min="1" max="10000">
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="d-flex gap-2">
+                  <button id="followBtn" class="btn btn-success flex-fill" title="Follow log updates">
+                    <i class="fas fa-play me-1"></i>Follow
+                  </button>
+                  <button id="pauseBtn" class="btn btn-warning flex-fill" title="Pause log updates">
+                    <i class="fas fa-pause me-1"></i>Pause
+                  </button>
+                  <button id="clearBtn" class="btn btn-secondary flex-fill" title="Clear log panel">
+                    <i class="fas fa-trash me-1"></i>Clear
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="row align-items-center">
+              <div class="col-md-8">
+                <div class="d-flex align-items-center">
+                  <div class="status-indicator status-connected" id="statusIndicator"></div>
+                  <strong id="currentPathName">No path selected</strong>
+                  <span class="ms-3 badge bg-info" id="connectionStatus">Ready</span>
+                </div>
+              </div>
+              <div class="col-md-4 text-end">
+                <div class="btn-group">
+                  <button class="btn btn-outline-light btn-sm" id="exportBtn" title="Export logs">
+                    <i class="fas fa-download"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style="position: relative;">
+            <button id="autoScrollBtn" class="btn btn-sm btn-primary auto-scroll-btn">
+              <i class="fas fa-arrow-down me-1"></i>Scroll to Bottom
+            </button>
+            <pre id="logPanel">Select a server and log path to start monitoring...</pre>
+          </div>
+        </div>
+
+        <div id="journalTab" class="tab-content">
+          <h3>Journal Service Logs</h3>
+          <div class="card mb-3">
+            <div class="card-body">
+              <div class="row g-2">
+                <div class="col-md-6">
+                  <label class="form-label">Служба</label>
+                  <div class="input-group">
+                    <select id="serviceSelect" class="form-select" onchange="loadJournalLogs()">
+                      <option value="">-- Выберите службу --</option>
+                    </select>
+                    <button class="btn btn-outline-secondary" onclick="refreshServiceList()" title="Обновить список служб">
+                      <i class="fas fa-sync"></i>
+                    </button>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Статус службы</label>
+                  <div class="d-flex align-items-center">
+                    <div id="serviceStatusLabel" class="fw-bold">-</div>
+                    <span id="serviceStatusBadge" class="service-status unknown ms-2">UNKNOWN</span>
+                  </div>
+                </div>
+                <div class="col-md-12">
+                  <div class="d-flex gap-2 mb-2">
+                    <button id="startServiceBtn" class="btn btn-sm btn-success" title="Запустить службу" onclick="controlService('start')">
+                      <i class="fas fa-play"></i>
+                    </button>
+                    <button id="stopServiceBtn" class="btn btn-sm btn-danger" title="Остановить службу" onclick="controlService('stop')">
+                      <i class="fas fa-stop"></i>
+                    </button>
+                    <button id="restartServiceBtn" class="btn btn-sm btn-warning" title="Перезапустить службу" onclick="controlService('restart')">
+                      <i class="fas fa-sync"></i>
+                    </button>
+                  </div>
+                </div>
+                <div class="col-md-8">
+                  <label class="form-label">Поиск (grep)</label>
+                  <div class="input-group">
+                    <input type="text" id="journalGrep" class="form-control" placeholder="Введите текст для поиска...">
+                    <button class="btn btn-outline-secondary" type="button" onclick="loadJournalLogs()">
+                      <i class="fas fa-search"></i>
+                    </button>
+                  </div>
+                </div>
+                <div class="col-md-2">
+                  <label for="journalLinesCount" class="form-label">Строк</label>
+                  <input id="journalLinesCount" type="number" class="form-control form-control-sm" value="100" min="1" max="10000">
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                  <button id="followJournalBtn" class="btn btn-success btn-sm w-100" onclick="toggleJournalFollow()">
+                    <i class="fas fa-play me-1"></i>Follow
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card mb-3">
+            <div class="card-body">
+              <h5>Фильтры</h5>
+              <div class="row">
+                <div class="col-md-6">
+                  <label class="form-label">Включить:</label>
+                  <div class="filter-chips-container" id="journalIncludeTags"></div>
+                  <div class="input-group input-group-sm">
+                    <input type="text" id="journalIncludeInput" class="form-control" placeholder="Добавить фильтр...">
+                    <button class="btn btn-outline-secondary" type="button" onclick="addJournalFilter('include')">Добавить</button>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Исключить:</label>
+                  <div class="filter-chips-container" id="journalExcludeTags"></div>
+                  <div class="input-group input-group-sm">
+                    <input type="text" id="journalExcludeInput" class="form-control" placeholder="Добавить фильтр...">
+                    <button class="btn btn-outline-secondary" type="button" onclick="addJournalFilter('exclude')">Добавить</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card mb-3">
+            <div class="card-body">
+              <h5>Цветовые правила</h5>
+              <div class="mb-3">
+                <div class="input-group input-group-sm">
+                  <input id="journalColorKeyword" class="form-control" placeholder="Ключевое слово">
+                  <select id="journalColorSelect" class="form-select form-select-sm">
+                    <option value="red">Red</option>
+                    <option value="green">Green</option>
+                    <option value="yellow">Yellow</option>
+                    <option value="blue">Blue</option>
+                    <option value="magenta">Magenta</option>
+                    <option value="cyan">Cyan</option>
+                    <option value="bright_red">Bright Red</option>
+                    <option value="bright_green">Bright Green</option>
+                    <option value="bright_yellow">Bright Yellow</option>
+                    <option value="bright_blue">Bright Blue</option>
+                  </select>
+                  <button id="addJournalColorRuleBtn" class="btn btn-success btn-sm">
+                    <i class="fas fa-plus"></i>
+                  </button>
+                </div>
+              </div>
+              <div id="journalColorRulesList"></div>
+            </div>
+          </div>
+
+          <div style="position: relative;">
+            <button id="autoScrollJournalBtn" class="btn btn-sm btn-primary auto-scroll-btn" style="display: none;">
+              <i class="fas fa-arrow-down me-1"></i>Scroll to Bottom
+            </button>
+            <pre id="journalPanel">Выберите службу для просмотра логов...</pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let selectedHost = null;
+let selectedPathId = null;
+let selectedPathName = '';
+let isFollowing = true;
+let autoScroll = true;
+let currentStream = null;
+let journalController = null;
+let isJournalFollowing = true;
+let journalAutoScroll = true;
+let journalLinesLimit = 100;
+let journalIncludeFilters = [];
+let journalExcludeFilters = [];
+let journalColorRules = [];
+
+async function api(url, opts={}) {
+  const res = await fetch(url, opts);
+  return res.ok ? res.json() : Promise.reject(await res.text());
+}
+
+function switchTab(tabName) {
+  document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+  document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+  if (tabName === 'logFiles') {
+    document.getElementById('logFilesTab').classList.add('active');
+    document.querySelector('.tab-button:nth-child(1)').classList.add('active');
+    if (journalController) { journalController.abort(); journalController = null; }
+  } else {
+    document.getElementById('journalTab').classList.add('active');
+    document.querySelector('.tab-button:nth-child(2)').classList.add('active');
+    if (currentStream) { currentStream.cancel(); currentStream = null; }
+    if (selectedHost) { refreshServiceList(); }
+  }
+}
+
+async function loadHosts() {
+  const hosts = await api('/api/hosts');
+  const container = document.getElementById('hostList');
+  container.innerHTML = '';
+  Object.keys(hosts).forEach(h => {
+    const div = document.createElement('div');
+    div.className = 'host-item';
+    div.innerHTML = `<div class="d-flex justify-content-between align-items-center"><span><i class="fas fa-desktop me-2"></i>${h}</span><span class="badge bg-success">online</span></div>`;
+    div.onclick = () => pickHost(h);
+    container.appendChild(div);
+  });
+}
+
+async function pickHost(host) {
+  selectedHost = host;
+  selectedPathId = null;
+  selectedPathName = '';
+  document.querySelectorAll('.host-item').forEach(i => i.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  document.getElementById('currentPathName').textContent = 'Select log path...';
+  document.getElementById('connectionStatus').className = 'badge bg-info';
+  document.getElementById('connectionStatus').textContent = 'Ready';
+  await loadSavedPaths();
+  await loadColorRules();
+  if (document.getElementById('journalTab').classList.contains('active')) {
+    refreshServiceList();
+  }
+}
+
+async function loadSavedPaths() {
+  if (!selectedHost) return;
+  const {paths} = await api(`/api/logpaths/${selectedHost}`);
+  const container = document.getElementById('savedPathsList');
+  container.innerHTML = '';
+  paths.forEach(path => {
+    const div = document.createElement('div');
+    div.className = 'path-item';
+    if (path.id == selectedPathId) div.classList.add('active');
+    const nameDisplay = path.name || path.path;
+    div.innerHTML = `<div class="d-flex justify-content-between align-items-center"><div><div><i class="fas fa-file me-1"></i>${nameDisplay}</div><small class="text-muted">${path.path}</small></div><button class="btn btn-sm btn-danger" onclick="deletePath(event, ${path.id})"><i class="fas fa-times"></i></button></div>`;
+    div.onclick = (e) => {
+      if (e.target.tagName !== 'BUTTON' && e.target.parentElement.tagName !== 'BUTTON') {
+        selectPath(path.id, path.name || path.path);
+      }
+    };
+    container.appendChild(div);
+  });
+}
+
+function selectPath(pathId, pathName) {
+  selectedPathId = pathId;
+  selectedPathName = pathName;
+  document.getElementById('currentPathName').textContent = pathName;
+  document.querySelectorAll('.path-item').forEach(i => i.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  tail();
+}
+
+async function savePath() {
+  if (!selectedHost) return;
+  const path = document.getElementById('logPath').value.trim();
+  const name = document.getElementById('logPathName').value.trim();
+  if (!path) { alert('Please enter a log path'); return; }
+  await api(`/api/logpaths/${selectedHost}`, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({path, name})
+  });
+  document.getElementById('logPath').value = '';
+  document.getElementById('logPathName').value = '';
+  await loadSavedPaths();
+}
+
+async function deletePath(event, pathId) {
+  event.stopPropagation();
+  if (!selectedHost) return;
+  if (confirm('Delete this log path?')) {
+    await api(`/api/logpaths/${selectedHost}`, {
+      method: 'DELETE',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({id: pathId})
+    });
+    if (selectedPathId == pathId) {
+      selectedPathId = null;
+      selectedPathName = '';
+      document.getElementById('currentPathName').textContent = 'Select log path...';
+    }
+    await loadSavedPaths();
+  }
+}
+
+async function addColorRule() {
+  if (!selectedHost) return;
+  const keyword = document.getElementById('colorKeyword').value.trim();
+  const color = document.getElementById('colorSelect').value;
+  if (!keyword) { alert('Please enter a keyword'); return; }
+  await api(`/api/color-rules/${selectedHost}`, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({keyword, color})
+  });
+  document.getElementById('colorKeyword').value = '';
+  await loadColorRules();
+}
+
+async function deleteColorRule(ruleId) {
+  if (!selectedHost) return;
+  await api(`/api/color-rules/${selectedHost}`, {
+    method: 'DELETE',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({id: ruleId})
+  });
+  await loadColorRules();
+}
+
+async function loadColorRules() {
+  if (!selectedHost) return;
+  const {rules} = await api(`/api/color-rules/${selectedHost}`);
+  const container = document.getElementById('colorRulesList');
+  container.innerHTML = '';
+  rules.forEach(rule => {
+    const div = document.createElement('div');
+    div.className = 'list-group-item d-flex justify-content-between align-items-center mb-2';
+    div.innerHTML = `<div><span class="color-preview color-${rule.color}"></span><strong>${rule.keyword}</strong></div><button class="btn btn-sm btn-danger" onclick="deleteColorRule(${rule.id})"><i class="fas fa-times"></i></button>`;
+    container.appendChild(div);
+  });
+}
+
+function tail() {
+  if (!selectedHost) return;
+  if (currentStream) currentStream.cancel();
+  const grep = document.getElementById('grep').value;
+  const exclude = document.getElementById('excludePattern').value;
+  const level = document.getElementById('logLevel').value;
+  const lines = document.getElementById('linesCount').value;
+  const panel = document.getElementById('logPanel');
+  if (!isFollowing) panel.innerHTML = '';
+  let url = `/api/tail/${selectedHost}?grep=${encodeURIComponent(grep)}&exclude=${encodeURIComponent(exclude)}&level=${level}&lines=${lines}&follow=${isFollowing}`;
+  if (selectedPathId) url += `&path_id=${selectedPathId}`;
+  document.getElementById('statusIndicator').className = 'status-indicator status-connected';
+  document.getElementById('connectionStatus').className = 'badge bg-success';
+  document.getElementById('connectionStatus').textContent = isFollowing ? 'Following' : 'Loading...';
+  const controller = new AbortController();
+  currentStream = controller;
+  fetch(url, { signal: controller.signal }).then(r => {
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const reader = r.body.getReader();
+    const decoder = new TextDecoder();
+    function pump() {
+      return reader.read().then(({done, value}) => {
+        if (done) {
+          document.getElementById('statusIndicator').className = 'status-indicator status-disconnected';
+          document.getElementById('connectionStatus').className = 'badge bg-secondary';
+          document.getElementById('connectionStatus').textContent = 'Disconnected';
+          return;
+        }
+        const text = decoder.decode(value, {stream: true});
+        panel.innerHTML += text;
+        if (autoScroll) {
+          panel.scrollTop = panel.scrollHeight;
+        } else {
+          const isScrolledToBottom = panel.scrollHeight - panel.clientHeight <= panel.scrollTop + 1;
+          if (!isScrolledToBottom) {
+            document.getElementById('autoScrollBtn').style.display = 'block';
+          }
+        }
+        return pump();
+      });
+    }
+    return pump();
+  }).catch(err => {
+    if (err.name !== 'AbortError') {
+      panel.innerHTML += `\nERROR: ${err}\n`;
+      document.getElementById('statusIndicator').className = 'status-indicator status-disconnected';
+      document.getElementById('connectionStatus').className = 'badge bg-danger';
+      document.getElementById('connectionStatus').textContent = 'Error';
+    }
+  });
+}
+
+function toggleFollow() {
+  isFollowing = !isFollowing;
+  const followBtn = document.getElementById('followBtn');
+  const pauseBtn = document.getElementById('pauseBtn');
+  if (isFollowing) {
+    followBtn.className = 'btn btn-success flex-fill';
+    pauseBtn.className = 'btn btn-outline-warning flex-fill';
+    tail();
+  } else {
+    followBtn.className = 'btn btn-outline-success flex-fill';
+    pauseBtn.className = 'btn btn-warning flex-fill';
+  }
+}
+
+function clearLog() {
+  const panel = document.getElementById('logPanel');
+  panel.innerHTML = 'Logs cleared. Select a server and log path to start monitoring...\n';
+  autoScroll = true;
+  document.getElementById('autoScrollBtn').style.display = 'none';
+}
+
+function scrollToBottom() {
+  const panel = document.getElementById('logPanel');
+  panel.scrollTop = panel.scrollHeight;
+  autoScroll = true;
+  document.getElementById('autoScrollBtn').style.display = 'none';
+}
+
+async function refreshServiceList() {
+  if (!selectedHost) return;
+  const select = document.getElementById('serviceSelect');
+  select.innerHTML = '<option value="">-- Загрузка... --</option>';
+  try {
+    const res = await api(`/api/journal-services/${selectedHost}`);
+    select.innerHTML = '<option value="">-- Выберите службу --</option>';
+    res.services.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.name;
+      opt.textContent = `${s.name} — ${s.description}`;
+      select.appendChild(opt);
+    });
+  } catch (e) {
+    select.innerHTML = '<option value="">Ошибка загрузки</option>';
+  }
+}
+
+async function loadJournalLogs() {
+  if (!selectedHost || !document.getElementById('serviceSelect').value) return;
+  if (journalController) journalController.abort();
+  const service = document.getElementById('serviceSelect').value;
+  const grep = document.getElementById('journalGrep').value;
+  const lines = document.getElementById('journalLinesCount').value || 100;
+  const panel = document.getElementById('journalPanel');
+  panel.innerHTML = '';
+  panel.scrollTop = 0;
+  journalController = new AbortController();
+  const includeFilters = journalIncludeFilters.join(',');
+  const excludeFilters = journalExcludeFilters.join(',');
+  let url = `/api/journal/${selectedHost}?service=${encodeURIComponent(service)}&lines=${lines}`;
+  if (grep) url += `&grep=${encodeURIComponent(grep)}`;
+  if (includeFilters) url += `&include=${encodeURIComponent(includeFilters)}`;
+  if (excludeFilters) url += `&exclude=${encodeURIComponent(excludeFilters)}`;
+  url += `&follow=${isJournalFollowing}`;
+  fetch(url, { signal: journalController.signal })
+    .then(r => {
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const reader = r.body.getReader();
+      const decoder = new TextDecoder();
+      function pump() {
+        return reader.read().then(({ done, value }) => {
+          if (done) return;
+          const text = decoder.decode(value, { stream: true });
+          let coloredText = text;
+          journalColorRules.forEach(rule => {
+            if (text.toLowerCase().includes(rule.keyword.toLowerCase())) {
+              const regex = new RegExp(`(${rule.keyword})`, 'gi');
+              const className = `journal-color-${rule.color}`;
+              coloredText = coloredText.replace(regex, match => `<span class="${className}">${match}</span>`);
+            }
+          });
+          panel.innerHTML += coloredText;
+          if (journalAutoScroll) {
+            panel.scrollTop = panel.scrollHeight;
+          } else {
+            const isScrolledToBottom = panel.scrollHeight - panel.clientHeight <= panel.scrollTop + 1;
+            if (!isScrolledToBottom) {
+              document.getElementById('autoScrollJournalBtn').style.display = 'block';
+            }
+          }
+          return pump();
+        });
+      }
+      return pump();
+    })
+    .catch(err => {
+      if (err.name !== 'AbortError') {
+        panel.innerHTML += `\nERROR: ${err}\n`;
+      }
+    });
+}
+
+function toggleJournalFollow() {
+  isJournalFollowing = !isJournalFollowing;
+  const btn = document.getElementById('followJournalBtn');
+  if (isJournalFollowing) {
+    btn.className = 'btn btn-success btn-sm w-100';
+    btn.innerHTML = '<i class="fas fa-play me-1"></i>Follow';
+    loadJournalLogs();
+  } else {
+    btn.className = 'btn btn-outline-success btn-sm w-100';
+    btn.innerHTML = '<i class="fas fa-pause me-1"></i>Pause';
+  }
+}
+
+async function controlService(action) {
+  if (!selectedHost || !document.getElementById('serviceSelect').value) {
+    alert('Пожалуйста, выберите хост и службу сначала');
+    return;
+  }
+  const service = document.getElementById('serviceSelect').value;
+  const serviceName = service.split('.')[0];
+  if (!confirm(`Вы уверены, что хотите ${action} службу "${serviceName}"?`)) return;
+  document.getElementById('statusIndicator').className = 'badge bg-warning';
+  document.getElementById('statusIndicator').textContent = `Выполняется ${action}...`;
+  const panel = document.getElementById('journalPanel');
+  panel.insertAdjacentHTML('beforeend', `[SYSTEM] Выполняется '${action}' для службы '${serviceName}'...\n`);
+  try {
+    const response = await fetch(`/api/journal-control/${selectedHost}`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({service: serviceName, action: action})
+    });
+    const data = await response.json();
+    if (data.status === 'success') {
+      panel.insertAdjacentHTML('beforeend', `[SYSTEM] Служба '${serviceName}' ${action} выполнена успешно.\n`);
+      document.getElementById('statusIndicator').className = 'badge bg-success';
+      document.getElementById('statusIndicator').textContent = 'Выполнено';
+      setTimeout(() => { updateServiceStatus(); loadJournalLogs(); }, 1000);
+    } else {
+      panel.insertAdjacentHTML('beforeend', `[SYSTEM] Ошибка: ${data.error}\n`);
+      document.getElementById('statusIndicator').className = 'badge bg-danger';
+      document.getElementById('statusIndicator').textContent = 'Ошибка';
+    }
+  } catch (error) {
+    panel.insertAdjacentHTML('beforeend', `[SYSTEM] Ошибка сети: ${error.message}\n`);
+    document.getElementById('statusIndicator').className = 'badge bg-danger';
+    document.getElementById('statusIndicator').textContent = 'Ошибка';
+  }
+}
+
+async function updateServiceStatus() {
+  if (!selectedHost || !document.getElementById('serviceSelect').value) return;
+  const service = document.getElementById('serviceSelect').value;
+  const serviceName = service.split('.')[0];
+  try {
+    const res = await api(`/api/journal-status/${selectedHost}?service=${encodeURIComponent(serviceName)}`);
+    document.getElementById('serviceStatusLabel').textContent = res.status;
+    const statusBadge = document.getElementById('serviceStatusBadge');
+    statusBadge.className = 'service-status ' + res.status.toLowerCase();
+    statusBadge.textContent = res.status.toUpperCase();
+  } catch (e) {
+    document.getElementById('serviceStatusLabel').textContent = 'Ошибка';
+    const statusBadge = document.getElementById('serviceStatusBadge');
+    statusBadge.className = 'service-status unknown';
+    statusBadge.textContent = 'ERROR';
+  }
+}
+
+function addJournalFilter(type) {
+  const input = type === 'include' ? document.getElementById('journalIncludeInput') : document.getElementById('journalExcludeInput');
+  const value = input.value.trim();
+  if (!value) return;
+  if (type === 'include') {
+    if (!journalIncludeFilters.includes(value)) journalIncludeFilters.push(value);
+    updateJournalFilterChips('include');
+  } else {
+    if (!journalExcludeFilters.includes(value)) journalExcludeFilters.push(value);
+    updateJournalFilterChips('exclude');
+  }
+  input.value = '';
+  loadJournalLogs();
+}
+
+function removeJournalFilter(type, value) {
+  if (type === 'include') {
+    journalIncludeFilters = journalIncludeFilters.filter(f => f !== value);
+    updateJournalFilterChips('include');
+  } else {
+    journalExcludeFilters = journalExcludeFilters.filter(f => f !== value);
+    updateJournalFilterChips('exclude');
+  }
+  loadJournalLogs();
+}
+
+function updateJournalFilterChips(type) {
+  const container = type === 'include' ? document.getElementById('journalIncludeTags') : document.getElementById('journalExcludeTags');
+  const filters = type === 'include' ? journalIncludeFilters : journalExcludeFilters;
+  container.innerHTML = '';
+  filters.forEach(filter => {
+    const chip = document.createElement('span');
+    chip.className = 'filter-chip';
+    chip.innerHTML = `${filter}<span class="remove-btn" onclick="removeJournalFilter('${type}', '${filter}')">&times;</span>`;
+    container.appendChild(chip);
+  });
+}
+
+async function addJournalColorRule() {
+  const keyword = document.getElementById('journalColorKeyword').value.trim();
+  const color = document.getElementById('journalColorSelect').value;
+  if (!keyword) { alert('Введите ключевое слово'); return; }
+  journalColorRules.push({ keyword, color });
+  updateJournalColorRulesUI();
+  document.getElementById('journalColorKeyword').value = '';
+  loadJournalLogs();
+}
+
+function deleteJournalColorRule(index) {
+  journalColorRules.splice(index, 1);
+  updateJournalColorRulesUI();
+  loadJournalLogs();
+}
+
+function updateJournalColorRulesUI() {
+  const container = document.getElementById('journalColorRulesList');
+  container.innerHTML = '';
+  journalColorRules.forEach((rule, index) => {
+    const div = document.createElement('div');
+    div.className = 'list-group-item d-flex justify-content-between align-items-center mb-2';
+    div.innerHTML = `<div><span class="color-preview color-${rule.color}"></span><strong>${rule.keyword}</strong></div><button class="btn btn-sm btn-danger" onclick="deleteJournalColorRule(${index})"><i class="fas fa-times"></i></button>`;
+    container.appendChild(div);
+  });
+}
+
+function journalScrollToBottom() {
+  const panel = document.getElementById('journalPanel');
+  panel.scrollTop = panel.scrollHeight;
+  journalAutoScroll = true;
+  document.getElementById('autoScrollJournalBtn').style.display = 'none';
+}
+
+// Event bindings
+
+document.getElementById('savePathBtn').onclick = savePath;
+document.getElementById('addColorRuleBtn').onclick = addColorRule;
+document.getElementById('searchBtn').onclick = () => tail();
+document.getElementById('followBtn').onclick = toggleFollow;
+document.getElementById('pauseBtn').onclick = toggleFollow;
+document.getElementById('clearBtn').onclick = clearLog;
+document.getElementById('autoScrollBtn').onclick = scrollToBottom;
+document.getElementById('addJournalColorRuleBtn').onclick = addJournalColorRule;
+document.getElementById('autoScrollJournalBtn').onclick = journalScrollToBottom;
+
+document.getElementById('grep').addEventListener('keyup', e => { if (e.key === 'Enter') tail(); });
+document.getElementById('excludePattern').addEventListener('keyup', e => { if (e.key === 'Enter') tail(); });
+document.getElementById('logLevel').addEventListener('change', () => { tail(); });
+document.getElementById('linesCount').addEventListener('change', () => { if (!isFollowing) tail(); });
+document.getElementById('journalLinesCount').addEventListener('change', function() {
+  journalLinesLimit = parseInt(this.value) || 100;
+  if (document.getElementById('journalTab').classList.contains('active') && document.getElementById('serviceSelect').value) {
+    loadJournalLogs();
+  }
+});
+
+document.getElementById('journalGrep').addEventListener('keyup', e => { if (e.key === 'Enter') loadJournalLogs(); });
+document.getElementById('journalIncludeInput').addEventListener('keyup', e => { if (e.key === 'Enter') addJournalFilter('include'); });
+document.getElementById('journalExcludeInput').addEventListener('keyup', e => { if (e.key === 'Enter') addJournalFilter('exclude'); });
+
+document.getElementById('logPanel').addEventListener('scroll', function() {
+  const panel = this;
+  const isScrolledToBottom = panel.scrollHeight - panel.clientHeight <= panel.scrollTop + 1;
+  if (isScrolledToBottom) {
+    autoScroll = true;
+    document.getElementById('autoScrollBtn').style.display = 'none';
+  } else {
+    autoScroll = false;
+    document.getElementById('autoScrollBtn').style.display = 'block';
+  }
+});
+
+document.getElementById('journalPanel').addEventListener('scroll', function() {
+  const panel = this;
+  const isScrolledToBottom = panel.scrollHeight - panel.clientHeight <= panel.scrollTop + 1;
+  if (isScrolledToBottom) {
+    journalAutoScroll = true;
+    document.getElementById('autoScrollJournalBtn').style.display = 'none';
+  } else {
+    journalAutoScroll = false;
+    document.getElementById('autoScrollJournalBtn').style.display = 'block';
+  }
+});
+
+loadHosts();
+setInterval(loadHosts, 30000);
+</script>
+</body>
+</html>
