@@ -847,21 +847,18 @@ def api_host_reboot():
         logging.info(f'Команда перезагрузки отправлена на {ip}')
         return jsonify({'status': 'ok', 'msg': f'Команда перезагрузки отправлена на {ip}'}), 200
     except subprocess.TimeoutExpired as e:
-        msg = f'Таймаут при отправке команды перезагрузки на {ip}'
-        # Исправлена опечатка: убраны лишние кавычки
-        logging.error(msg + f" | Stderr: {e.stderr.decode('utf-8') if e.stderr else 'N/A'}")
-        return jsonify({'status': 'error', 'msg': msg}), 500
+        # Хост может перезагружаться и не ответить вовремя — считаем это успехом
+        msg = f'Команда перезагрузки отправлена на {ip} (таймаут ожидания ответа)'
+        logging.warning(msg + f" | Stderr: {e.stderr if e.stderr else 'N/A'}")
+        return jsonify({'status': 'ok', 'msg': msg}), 200
     except subprocess.CalledProcessError as e:
-        # Этот блок поймает ненулевой код возврата
-        msg = f'Ошибка при отправке команды перезагрузки на {ip}'
-        # Исправлена опечатка: убраны лишние кавычки
-        logging.error(msg + f" | Код: {e.returncode}, Stderr: {e.stderr.decode('utf-8') if e.stderr else 'N/A'}")
-        # Добавим stderr к сообщению для лучшей диагностики
+        # SSH может вернуть ошибку, если соединение оборвалось из-за перезагрузки
+        msg = f'Команда перезагрузки отправлена на {ip} (возможна ошибка SSH)'
         detailed_msg = f"{msg}. Код ошибки SSH: {e.returncode}"
         if e.stderr:
-             # Исправлена опечатка: убраны лишние кавычки
-             detailed_msg += f". Вывод SSH: {e.stderr.decode('utf-8').strip()}"
-        return jsonify({'status': 'error', 'msg': detailed_msg}), 500
+            detailed_msg += f". Вывод SSH: {e.stderr.strip()}"
+        logging.warning(detailed_msg)
+        return jsonify({'status': 'ok', 'msg': msg}), 200
     except Exception as e:
         msg = f'Неизвестная ошибка при отправке команды перезагрузки на {ip}: {e}'
         logging.error(msg)
@@ -954,7 +951,7 @@ def api_host_shutdown():
     except subprocess.TimeoutExpired as e:
         # Это может быть нормально, если хост быстро начал выключаться
         msg = f'Команда выключения отправлена на {ip} (таймаут ожидания ответа)'
-        logging.warning(msg + f" | Stderr: {e.stderr.decode('utf-8') if e.stderr else 'N/A'}")
+        logging.warning(msg + f" | Stderr: {e.stderr if e.stderr else 'N/A'}")
         return jsonify({'status': 'ok', 'msg': msg}), 200 # Считаем успехом
     except subprocess.CalledProcessError as e:
         # Этот блок поймает ненулевой код возврата SSH
@@ -963,7 +960,7 @@ def api_host_shutdown():
         msg = f'Команда выключения отправлена на {ip} (возможна ошибка SSH)'
         detailed_msg = f"{msg}. Код ошибки SSH: {e.returncode}"
         if e.stderr:
-             detailed_msg += f". Вывод SSH: {e.stderr.decode('utf-8').strip()}"
+             detailed_msg += f". Вывод SSH: {e.stderr.strip()}"
         logging.warning(detailed_msg) # Логируем как warning
         # Возвращаем успех, так как команда могла быть выполнена
         return jsonify({'status': 'ok', 'msg': msg}), 200
@@ -971,39 +968,6 @@ def api_host_shutdown():
         msg = f'Неизвестная ошибка при отправке команды выключения на {ip}: {e}'
         logging.error(msg, exc_info=True) # exc_info=True для полного трейса
         return jsonify({'status': 'error', 'msg': msg}), 500
-
-# ==== НОВЫЙ API: Git Commit & Push ====
-@app.route('/api/git/commit-push', methods=['POST'])
-def api_git_commit_push():
-    """
-    Выполняет commit и push изменений playbook.yml и preseed.cfg в Git-репозиторий.
-    """
-    try:
-        # Выполняем команду через subprocess
-        cmd = (
-            "cd /root/ansible && "
-            "sudo cp /var/www/html/debian12/preseed.cfg /root/ansible/files/debian12/preseed.cfg 2>/dev/null; "
-            "git add playbook.yml files/debian12/preseed.cfg && "
-            "(git diff --cached --quiet || git commit -m \"Обновлены playbook и preseed.cfg ($(date '+%d.%m.%Y %H:%M:%S'))\") && "
-            "git pull --rebase origin main && "
-            "git push origin main"
-        )
-        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=30)
-        if result.returncode == 0:
-            logging.info('Успешный commit & push')
-            return jsonify({'status': 'ok', 'msg': 'Изменения успешно отправлены в репозиторий'}), 200
-        else:
-            error_msg = f"Ошибка при выполнении команды: {result.stderr.strip()}"
-            logging.error(error_msg)
-            return jsonify({'status': 'error', 'msg': error_msg}), 500
-    except subprocess.TimeoutExpired:
-        error_msg = "Таймаут выполнения команды"
-        logging.error(error_msg)
-        return jsonify({'status': 'error', 'msg': error_msg}), 500
-    except Exception as e:
-        error_msg = f"Неизвестная ошибка: {str(e)}"
-        logging.error(error_msg)
-        return jsonify({'status': 'error', 'msg': error_msg}), 500
 
 # ==== Веб-интерфейс: дашборд ====
 @app.route('/')
