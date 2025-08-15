@@ -1,0 +1,1452 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debian 12 Preseed Конструктор</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --success: #27ae60;
+            --warning: #e67e22;
+            --danger: #e74c3c;
+            --light: #ecf0f1;
+            --dark: #34495e;
+        }
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            background: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+            padding: 0;
+            margin: 0;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 0;
+            box-shadow: 0 0 10px rgba(0,0,0,0.05);
+        }
+        header {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 1px solid var(--light);
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: var(--primary);
+            margin: 0;
+            font-size: 1.8em;
+        }
+        .setup-wizard {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .wizard-steps {
+            display: flex;
+            border-bottom: 1px solid var(--light);
+            padding-bottom: 15px;
+        }
+        .step {
+            flex: 1;
+            text-align: center;
+            position: relative;
+            cursor: pointer;
+            padding: 10px 0;
+        }
+        .step-number {
+            display: inline-flex;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: var(--light);
+            align-items: center;
+            justify-content: center;
+            margin-right: 8px;
+            font-weight: bold;
+        }
+        .step.active .step-number {
+            background: var(--secondary);
+            color: white;
+        }
+        .step.completed .step-number {
+            background: var(--success);
+            color: white;
+        }
+        .step-label {
+            font-size: 0.9em;
+            color: var(--dark);
+        }
+        .step.active .step-label {
+            font-weight: bold;
+            color: var(--primary);
+        }
+        .step-line {
+            position: absolute;
+            bottom: 14px;
+            left: 50%;
+            width: 100%;
+            height: 2px;
+            background: var(--light);
+            z-index: -1;
+        }
+        .step:last-child .step-line {
+            display: none;
+        }
+        .step.active .step-line {
+            background: var(--secondary);
+        }
+        .config-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            overflow: hidden;
+        }
+        .card-header {
+            background: var(--primary);
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .card-content {
+            padding: 20px;
+        }
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .section {
+            margin-bottom: 20px;
+        }
+        h2 {
+            color: var(--primary);
+            margin-top: 0;
+            font-size: 1.3em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #555;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--secondary);
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+        .hint {
+            font-size: 0.85em;
+            color: #777;
+            margin-top: 5px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .example {
+            background: #f8f9fa;
+            padding: 8px 10px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            margin-top: 5px;
+            border-left: 3px solid var(--secondary);
+        }
+        .partition-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        .btn {
+            background: var(--secondary);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.3s;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .btn:hover {
+            background: #2980b9;
+            transform: translateY(-1px);
+        }
+        .btn-success {
+            background: var(--success);
+        }
+        .btn-success:hover {
+            background: #219653;
+        }
+        .btn-warning {
+            background: var(--warning);
+        }
+        .btn-warning:hover {
+            background: #d35400;
+        }
+        .btn-large {
+            padding: 14px 25px;
+            font-size: 18px;
+        }
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            color: #777;
+            font-size: 0.9em;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        .disk-visualization {
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+        .disk-summary {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+        }
+        .disk-chart {
+            height: 24px;
+            background: var(--light);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        .chart-bar {
+            display: flex;
+            height: 100%;
+            width: 100%;
+        }
+        .chart-segment {
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.7em;
+            transition: width 0.3s;
+        }
+        .chart-segment.efi { background: #9b59b6; }
+        .chart-segment.boot { background: #3498db; }
+        .chart-segment.root { background: #2ecc71; }
+        .chart-segment.home { background: #1abc9c; }
+        .chart-segment.var { background: #f39c12; }
+        .chart-segment.swap { background: #e74c3c; }
+        .disk-warning {
+            background: #fff8e6;
+            color: #d35400;
+            padding: 8px 10px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            display: none;
+        }
+        .toggle-section {
+            background: #f8f9fa;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 15px 0;
+        }
+        .toggle-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+        .toggle-icon {
+            transition: transform 0.3s;
+        }
+        .toggle-content {
+            padding-top: 10px;
+            display: none;
+        }
+        .toggle-content.active {
+            display: block;
+        }
+        .preset-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .preset-card {
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .preset-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .preset-card.active {
+            border-color: var(--secondary);
+            background: #e9f7fe;
+        }
+        .preset-icon {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        .preset-example {
+            background: #f1f1f1;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
+        .example-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 3px;
+        }
+        .example-row span:first-child {
+            font-weight: bold;
+            color: var(--dark);
+        }
+        .mirror-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+        .mirror-row input {
+            flex: 1;
+        }
+        .wizard-navigation {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .preview-area {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 14px;
+            max-height: 400px;
+            overflow: auto;
+            white-space: pre-wrap;
+            margin-top: 15px;
+            display: none;
+        }
+        .history-section {
+            margin-top: 25px;
+        }
+        .history-item {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-left: 3px solid var(--secondary);
+        }
+        .history-item:hover {
+            background: #e9f7fe;
+            transform: translateX(5px);
+        }
+        .history-item strong {
+            color: var(--primary);
+        }
+        .password-strength {
+            height: 5px;
+            border-radius: 3px;
+            margin-top: 5px;
+            transition: width 0.3s;
+        }
+        .very-weak { background: var(--danger); width: 20%; }
+        .weak { background: #f39c12; width: 40%; }
+        .good { background: #f39c12; width: 70%; }
+        .strong { background: var(--success); width: 100%; }
+        .custom-name {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .custom-name input {
+            flex: 1;
+            padding: 5px;
+            font-size: 0.9em;
+        }
+        .hot-spare-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 5px;
+        }
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: var(--success);
+        }
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+        @media (max-width: 768px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            .wizard-steps {
+                flex-direction: column;
+                gap: 5px;
+            }
+            .step {
+                padding: 8px 0;
+            }
+            .step-line {
+                display: none;
+            }
+            .partition-grid {
+                grid-template-columns: 1fr;
+            }
+            .preset-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Debian 12 Preseed Конструктор</h1>
+        </header>
+        <div class="setup-wizard">
+            <div class="wizard-steps">
+                <div class="step active" data-step="1">
+                    <span class="step-number">1</span>
+                    <span class="step-label">Базовые настройки</span>
+                    <span class="step-line"></span>
+                </div>
+                <div class="step" data-step="2">
+                    <span class="step-number">2</span>
+                    <span class="step-label">Диски и разделы</span>
+                    <span class="step-line"></span>
+                </div>
+                <div class="step" data-step="3">
+                    <span class="step-number">3</span>
+                    <span class="step-label">Сеть и пользователи</span>
+                    <span class="step-line"></span>
+                </div>
+                <div class="step" data-step="4">
+                    <span class="step-number">4</span>
+                    <span class="step-label">Интеграции</span>
+                </div>
+            </div>
+            <form id="preseed-form" action="{{ url_for('preseed.generate') }}" method="POST">
+                <!-- Шаг 1: Базовые настройки -->
+                <div class="config-card active" data-step="1">
+                    <div class="card-header">
+                        <h2>1. Базовые настройки</h2>
+                    </div>
+                    <div class="card-content">
+                        <div class="preset-grid">
+                            <div class="preset-card server active" data-preset="server">
+                                <div class="preset-icon">🏢</div>
+                                <h3><span class="preset-name-label">Сервер</span></h3>
+                                <p>RAID-1, 2 диска, стандартные разделы</p>
+                                <div class="custom-name">
+                                    <input type="text" class="preset-name-input" placeholder="Новое имя" style="display: none;">
+                                    <button type="button" class="btn btn-warning rename-btn" style="width: auto; padding: 0 10px; font-size: 0.9em;">Переименовать</button>
+                                </div>
+                                <div class="preset-example">
+                                    <div class="example-row"><span>Диски:</span> <span id="server-disk-count">2</span> × <span id="server-disk-size">500GB</span></div>
+                                    <div class="example-row"><span>RAID:</span> 1 (<span id="server-raid-space">500GB</span>)</div>
+                                </div>
+                            </div>
+                            <div class="preset-card desktop" data-preset="desktop">
+                                <div class="preset-icon">💻</div>
+                                <h3><span class="preset-name-label">Рабочая станция</span></h3>
+                                <p>RAID-1, 2 диска, большой /home</p>
+                                <div class="custom-name">
+                                    <input type="text" class="preset-name-input" placeholder="Новое имя" style="display: none;">
+                                    <button type="button" class="btn btn-warning rename-btn" style="width: auto; padding: 0 10px; font-size: 0.9em;">Переименовать</button>
+                                </div>
+                                <div class="preset-example">
+                                    <div class="example-row"><span>Диски:</span> <span id="desktop-disk-count">2</span> × <span id="desktop-disk-size">1TB</span></div>
+                                    <div class="example-row"><span>RAID:</span> 1 (<span id="desktop-raid-space">1TB</span>)</div>
+                                </div>
+                            </div>
+                            <div class="preset-card custom" data-preset="custom">
+                                <div class="preset-icon">⚙️</div>
+                                <h3><span class="preset-name-label">Пользовательский</span></h3>
+                                <p>Настройте все параметры вручную</p>
+                                <div class="custom-name">
+                                    <input type="text" class="preset-name-input" placeholder="Новое имя" style="display: none;">
+                                    <button type="button" class="btn btn-warning rename-btn" style="width: auto; padding: 0 10px; font-size: 0.9em;">Переименовать</button>
+                                </div>
+                                <div class="preset-example">
+                                    <div class="example-row"><span>Диски:</span> <span id="custom-disk-count">2</span></div>
+                                    <div class="example-row"><span>RAID:</span> <span id="custom-raid-level">1</span></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="section">
+                            <h2>Тип RAID и диски</h2>
+                            <div class="form-group">
+                                <label for="raid_level">Тип RAID</label>
+                                <select id="raid_level" name="raid_level">
+                                    <option value="1" selected>RAID-1 (зеркало)</option>
+                                    <option value="0">RAID-0 (стрипинг)</option>
+                                </select>
+                                <div class="hint">ℹ️ Для RAID-1 требуется минимум 2 диска</div>
+                            </div>
+                            <div class="form-group">
+                                <label>Количество дисков</label>
+                                <div style="display: flex; align-items: center; gap: 10px; margin-top: 5px;">
+                                    <input type="number" id="disk_count" name="disk_count" min="1" value="2" required style="width: 100%;">
+                                    <div class="hot-spare-container">
+                                        <span>Hot spare</span>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" id="hot_spare" name="hot_spare">
+                                            <span class="slider"></span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="hint">ℹ️ Минимум 2 диска для RAID-1</div>
+                            </div>
+                            <div class="form-group">
+                                <label for="disk_size">Объем одного диска (GB)</label>
+                                <input type="number" id="disk_size" name="disk_size" min="10" value="500" required>
+                                <div class="hint">ℹ️ Например: 500 (для 500GB дисков)</div>
+                            </div>
+                        </div>
+                        <div class="section">
+                            <h2>Основные параметры</h2>
+                            <div class="form-group">
+                                <label for="hostname">Имя хоста</label>
+                                <input type="text" id="hostname" name="hostname" value="ks-debian-12" required>
+                                <div class="example">Пример: server-prod-01</div>
+                            </div>
+                            <div class="form-group">
+                                <label for="locale">Локаль</label>
+                                <select id="locale" name="locale">
+                                    <option value="en_US.UTF-8">Английский (en_US.UTF-8)</option>
+                                    <option value="ru_RU.UTF-8" selected>Русский (ru_RU.UTF-8)</option>
+                                    <option value="de_DE.UTF-8">Немецкий (de_DE.UTF-8)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="timezone">Часовой пояс</label>
+                                <select id="timezone" name="timezone">
+                                    <option value="Europe/Moscow" selected>Москва (Europe/Moscow)</option>
+                                    <option value="Europe/London">Лондон (Europe/London)</option>
+                                    <option value="America/New_York">Нью-Йорк (America/New_York)</option>
+                                    <option value="Asia/Tokyo">Токио (Asia/Tokyo)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Шаг 2: Диски и разделы -->
+                <div class="config-card" data-step="2">
+                    <div class="card-header">
+                        <h2>2. Диски и разделы</h2>
+                    </div>
+                    <div class="card-content">
+                        <div class="section">
+                            <h2>Конфигурация разделов</h2>
+                            <div class="disk-visualization">
+                                <div class="disk-summary">
+                                    <div>Всего: <strong id="total-space">1000 GB</strong></div>
+                                    <div>Использовано: <strong id="used-space">488 GB</strong> (<span id="percent-used">48.8%</span>)</div>
+                                </div>
+                                <div class="disk-chart">
+                                    <div class="chart-bar">
+                                        <div class="chart-segment efi" style="width: 5%">EFI</div>
+                                        <div class="chart-segment boot" style="width: 10%">/boot</div>
+                                        <div class="chart-segment root" style="width: 40%">/</div>
+                                        <div class="chart-segment home" style="width: 25%">/home</div>
+                                        <div class="chart-segment var" style="width: 15%">/var</div>
+                                        <div class="chart-segment swap" style="width: 5%">Swap</div>
+                                    </div>
+                                </div>
+                                <div class="disk-warning" id="disk-warning">
+                                    ⚠️ Внимание: осталось менее 10% свободного места!
+                                </div>
+                            </div>
+                            <div class="partition-grid">
+                                <div class="form-group">
+                                    <label for="efi_size">EFI (MB)</label>
+                                    <input type="text" id="efi_size" name="efi_size" value="512" required>
+                                    <div class="example">Мин. 100MB, FAT32</div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="boot_size">/boot (MB)</label>
+                                    <input type="text" id="boot_size" name="boot_size" value="2048" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="root_size">/ (GB)</label>
+                                    <input type="text" id="root_size" name="root_size" value="100" required>
+                                    <div class="example">Основная система</div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="home_size">/home (GB)</label>
+                                    <input type="text" id="home_size" name="home_size" value="50" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="var_size">/var (GB)</label>
+                                    <input type="text" id="var_size" name="var_size" value="30" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="swap_size">Swap (GB)</label>
+                                    <input type="text" id="swap_size" name="swap_size" value="8" required>
+                                    <div class="example">Рекомендуется 1-2x RAM</div>
+                                </div>
+                            </div>
+                            <button type="button" id="auto-calc" class="btn btn-warning" style="margin-top: 15px;">
+                                🤖 Автоматический расчет
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <!-- Шаг 3: Сеть и пользователи -->
+                <div class="config-card" data-step="3">
+                    <div class="card-header">
+                        <h2>3. Сеть и пользователи</h2>
+                    </div>
+                    <div class="card-content">
+                        <div class="section">
+                            <h2>Сетевые настройки</h2>
+                            <div class="form-group">
+                                <label>Тип сети</label>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 5px;">
+                                    <label style="display: flex; align-items: center; gap: 5px;">
+                                        <input type="radio" name="net_mode" value="dhcp" checked>
+                                        DHCP
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 5px;">
+                                        <input type="radio" name="net_mode" value="static">
+                                        Статический IP
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="toggle-section" id="static-fields" style="display: none;">
+                                <div class="toggle-header">
+                                    <span>Статические настройки сети</span>
+                                    <span class="toggle-icon">▶</span>
+                                </div>
+                                <div class="toggle-content active">
+                                    <div class="form-group">
+                                        <label for="net_ip">IP-адрес</label>
+                                        <input type="text" id="net_ip" name="net_ip" placeholder="192.168.1.100">
+                                        <div class="example">Пример: 192.168.1.100</div>
+                                    </div>
+                                    <div class="form-group">
+                                    <label for="net_netmask">Маска подсети</label>
+                                    <input type="text" id="net_netmask" name="net_netmask" placeholder="255.255.255.0">
+                                    <div class="example">Пример: 255.255.255.0</div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="net_gateway">Шлюз</label>
+                                    <input type="text" id="net_gateway" name="net_gateway" placeholder="192.168.1.1">
+                                    <div class="example">Пример: 192.168.1.1</div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="net_dns">DNS-серверы</label>
+                                    <input type="text" id="net_dns" name="net_dns" placeholder="8.8.8.8, 8.8.4.4">
+                                    <div class="example">Через запятую: 8.8.8.8, 1.1.1.1</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="section">
+                            <h2>Учетные записи</h2>
+                            <div class="form-group">
+                                <label for="root_password">Пароль root</label>
+                                <input type="password" id="root_password" name="root_password" value="Q1w2a3s40007" required>
+                                <div class="password-strength" id="password-strength"></div>
+                                <div class="example">Минимум 8 символов</div>
+                            </div>
+                            <div class="form-group">
+                                <label for="username">Имя пользователя</label>
+                                <input type="text" id="username" name="username" value="sphera" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="user_password">Пароль пользователя</label>
+                                <input type="password" id="user_password" name="user_password" value="SpheraGuest!" required>
+                                <div class="example">Рекомендуется сложный пароль</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Шаг 4: Интеграции -->
+                <div class="config-card" data-step="4">
+                    <div class="card-header">
+                        <h2>4. Интеграции</h2>
+                    </div>
+                    <div class="card-content">
+                        <div class="section">
+                            <h2>Зеркала APT</h2>
+                            <div class="form-group">
+                                <label>Режим зеркал</label>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 5px;">
+                                    <label style="display: flex; align-items: center; gap: 5px;">
+                                        <input type="radio" name="mirror_mode" value="default" checked>
+                                        Стандартное зеркало
+                                    </label>
+                                    <label style="display: flex; align-items: center; gap: 5px;">
+                                        <input type="radio" name="mirror_mode" value="custom">
+                                        Кастомные зеркала
+                                    </label>
+                                </div>
+                            </div>
+                            <div id="default-mirror">
+                                <div class="form-group">
+                                    <label for="mirror_host">APT Зеркало (хост:порт)</label>
+                                    <input type="text" id="mirror_host" name="mirror_host" value="10.19.1.104:8081" required>
+                                    <div class="example">Пример: 192.168.1.100:8080</div>
+                                </div>
+                            </div>
+                            <div id="custom-mirrors" style="display: none;">
+                                <div class="form-group">
+                                    <label>Кастомные зеркала (формат: deb URL distro comp1 comp2)</label>
+                                    <div id="mirrors-container">
+                                        <div class="mirror-row">
+                                            <input type="text" name="mirror_url_1" placeholder="deb http://archive.debian.org/debian bookworm main">
+                                            <button type="button" class="btn btn-warning" style="width: auto; padding: 0 10px;">-</button>
+                                        </div>
+                                    </div>
+                                    <button type="button" class="btn btn-warning" style="margin-top: 10px; width: auto; padding: 0 15px;">
+                                        + Добавить зеркало
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="section">
+                            <h2>Регистрация IPXE</h2>
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="enable_ipxe" name="enable_ipxe" checked>
+                                    Включить регистрацию на сервере
+                                </label>
+                                <div class="hint">Отправка данных на этапах DHCP и после установки</div>
+                            </div>
+                            <div id="ipxe-fields">
+                                <div class="form-group">
+                                    <label for="ipxe_url">URL сервера регистрации</label>
+                                    <input type="text" id="ipxe_url" name="ipxe_url" value="http://10.19.1.90:5000/api/register" required>
+                                    <div class="example">Пример: http://ваш-сервер:5000/api/register</div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Этапы регистрации</label>
+                                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 5px;">
+                                        <label style="display: flex; align-items: center; gap: 5px;">
+                                            <input type="checkbox" name="register_dhcp" checked>
+                                            После DHCP
+                                        </label>
+                                        <label style="display: flex; align-items: center; gap: 5px;">
+                                            <input type="checkbox" name="register_disk" checked>
+                                            После разметки дисков
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>
+                                        <input type="checkbox" id="extended_registration" name="extended_registration" checked>
+                                        Расширенная регистрация с деталями
+                                    </label>
+                                    <div class="hint">Сохранение информации о дисках и отправка в base64</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="section">
+                            <h2>Дополнительные настройки</h2>
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="install_base_packages" name="install_base_packages" checked>
+                                    Установить базовые пакеты
+                                </label>
+                                <div class="hint">wget, curl, python3, шрифты и т.д.</div>
+                            </div>
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="enable_root_ssh" name="enable_root_ssh" checked>
+                                    Разрешить root-доступ по SSH
+                                </label>
+                                <div class="hint">Добавляет PermitRootLogin yes в sshd_config</div>
+                            </div>
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="disable_sound" name="disable_sound" checked>
+                                    Отключить звуковую систему
+                                </label>
+                                <div class="hint">Через blacklist snd_hda_intel</div>
+                            </div>
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="fix_hostname" name="fix_hostname" checked>
+                                    Жестко задать имя хоста
+                                </label>
+                                <div class="hint">Имя хоста будет установлено как указано, без зависимости от DHCP</div>
+                            </div>
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="show_ip" name="show_ip" checked>
+                                    Отображать IP в терминале
+                                </label>
+                                <div class="hint">IP будет отображаться при каждом входе в систему</div>
+                            </div>
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="disable_video" name="disable_video">
+                                    Отключить видеодрайвер
+                                </label>
+                                <div class="hint">Решает проблемы с отображением на некоторых видеокартах</div>
+                            </div>
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="enable_font" name="enable_font" checked>
+                                    Настроить шрифт TTY
+                                </label>
+                                <div class="hint">Выберите шрифт и размер для терминала</div>
+                            </div>
+                            <div id="font-settings" style="padding-left: 20px; margin-top: 10px;">
+                                <div class="form-group">
+                                    <label for="font_face">Тип шрифта</label>
+                                    <select id="font_face" name="font_face">
+                                        <option value="Terminus">Terminus</option>
+                                        <option value="Lat15">Lat15</option>
+                                        <option value="VGA">VGA</option>
+                                        <option value="Uni3-Terminus32x16">Uni3-Terminus32x16</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="font_size">Размер шрифта</label>
+                                    <select id="font_size" name="font_size">
+                                        <option value="8x16">8x16</option>
+                                        <option value="8x8">8x8</option>
+                                        <option value="16x32" selected>16x32</option>
+                                        <option value="6x11">6x11</option>
+                                        <option value="6x10">6x10</option>
+                                        <option value="5x8">5x8</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="section">
+                            <h2>Ansible интеграция</h2>
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="enable_ansible" name="enable_ansible" checked>
+                                    Включить автоматическую регистрацию в Ansible
+                                </label>
+                                <div class="hint">Скрипт запустится при первом старте системы</div>
+                            </div>
+                            <div id="ansible-fields">
+                                <div class="form-group">
+                                    <label for="ansible_script">URL скрипта регистрации</label>
+                                    <input type="text" id="ansible_script" name="ansible_script"
+                                           value="http://10.19.1.104:8081/repository/artifacts-local/other/config/ansible-register.sh" required>
+                                    <div class="example">Пример: http://repo.example.com/ansible-register.sh</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="section">
+                            <h2>Предпросмотр и сохранение</h2>
+                            <button type="button" id="preview-btn" class="btn" style="background: #9b59b6; margin-bottom: 15px;">
+                                🔍 Предпросмотр preseed
+                            </button>
+                            <div id="preview-area" class="preview-area"></div>
+                            <div class="form-group" style="margin-top: 20px;">
+                                <label for="template-name">Сохранить как шаблон</label>
+                                <div style="display: flex; gap: 10px;">
+                                    <input type="text" id="template-name" placeholder="Имя шаблона" style="flex: 1;">
+                                    <button type="button" id="save-template" class="btn" style="background: var(--success); width: auto; padding: 0 15px;">Сохранить</button>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="load-template">Загрузить шаблон</label>
+                                <select id="load-template" style="width: 100%; padding: 8px; margin-bottom: 10px;">
+                                    <option value="">-- Выберите шаблон --</option>
+                                </select>
+                                <button type="button" id="apply-template" class="btn" style="background: var(--secondary); width: 100%;">Применить шаблон</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="wizard-steps bottom">
+                    <div class="step active" data-step="1">
+                        <span class="step-number">1</span>
+                        <span class="step-label">Базовые настройки</span>
+                        <span class="step-line"></span>
+                    </div>
+                    <div class="step" data-step="2">
+                        <span class="step-number">2</span>
+                        <span class="step-label">Диски и разделы</span>
+                        <span class="step-line"></span>
+                    </div>
+                    <div class="step" data-step="3">
+                        <span class="step-number">3</span>
+                        <span class="step-label">Сеть и пользователи</span>
+                        <span class="step-line"></span>
+                    </div>
+                    <div class="step" data-step="4">
+                        <span class="step-number">4</span>
+                        <span class="step-label">Интеграции</span>
+                    </div>
+                </div>
+                <div class="wizard-navigation">
+                    <button type="button" id="prev-step" class="btn" style="background: var(--dark);" disabled>Назад</button>
+                    <button type="button" id="next-step" class="btn">Далее</button>
+                    <button type="submit" id="generate-btn" class="btn btn-success btn-large" style="display: none;">
+                        📥 Скачать preseed.cfg
+                    </button>
+                </div>
+            </form>
+            <div class="history-section">
+                <h2>Последние генерации</h2>
+                <div id="history-list"></div>
+            </div>
+            <footer>
+                <p>Конструктор preseed-файлов для автоматической установки Debian 12 (bookworm)</p>
+                <p>Поддерживает RAID-0/1, UEFI, кастомные зеркала и интеграцию с Ansible</p>
+            </footer>
+        </div>
+    </div>
+    <script>
+        const BASE_URL = "{{ url_for('preseed.index') }}";
+        let currentStep = 1;
+        const totalSteps = 4;
+        let presetNames = {
+            server: "Сервер",
+            desktop: "Рабочая станция",
+            custom: "Пользовательский"
+        };
+        document.addEventListener('DOMContentLoaded', function() {
+            initInterface();
+            loadTemplates();
+            loadHistory();
+        });
+        function initInterface() {
+            initPresetNames();
+            setupWizardNavigation();
+            setupModeSwitches();
+            setupDiskVisualization();
+            setupPresetCards();
+            setupValidation();
+            setupTemplateHandlers();
+            setupHistoryHandlers();
+        }
+        function initPresetNames() {
+            document.querySelectorAll('.preset-card').forEach(card => {
+                const preset = card.dataset.preset;
+                const name = presetNames[preset] || preset.charAt(0).toUpperCase() + preset.slice(1);
+                card.querySelector('.preset-name-label').textContent = name;
+            });
+        }
+        function setupWizardNavigation() {
+            document.getElementById('next-step').addEventListener('click', function() {
+                if (currentStep < totalSteps) {
+                    goToStep(currentStep + 1);
+                }
+            });
+            document.getElementById('prev-step').addEventListener('click', function() {
+                if (currentStep > 1) {
+                    goToStep(currentStep - 1);
+                }
+            });
+            document.querySelectorAll('.wizard-steps .step').forEach(stepEl => {
+                stepEl.addEventListener('click', () => {
+                    const stepNum = parseInt(stepEl.dataset.step);
+                    goToStep(stepNum);
+                });
+            });
+            document.addEventListener('keydown', e => {
+                if (e.key >= '1' && e.key <= String(totalSteps)) {
+                    goToStep(parseInt(e.key));
+                }
+            });
+            window.goToStep = function(step) {
+                if (step < 1 || step > totalSteps) return;
+                document.querySelectorAll('.config-card').forEach(card => {
+                    card.style.display = 'none';
+                    card.classList.remove('active');
+                });
+                document.querySelectorAll('.wizard-steps .step').forEach(stepEl => {
+                    stepEl.classList.remove('active', 'completed');
+                });
+                const currentCard = document.querySelector(`.config-card[data-step="${step}"]`);
+                currentCard.style.display = 'block';
+                currentCard.classList.add('active');
+                const steps = document.querySelectorAll('.wizard-steps .step');
+                steps.forEach(s => {
+                    const stepNum = parseInt(s.dataset.step);
+                    if (stepNum < step) s.classList.add('completed');
+                    else if (stepNum === step) s.classList.add('active');
+                });
+                document.getElementById('prev-step').disabled = (step === 1);
+                document.getElementById('next-step').style.display = (step === totalSteps) ? 'none' : 'block';
+                document.getElementById('generate-btn').style.display = (step === totalSteps) ? 'block' : 'none';
+                currentStep = step;
+                window.scrollTo(0,0);
+            }
+            goToStep(1);
+        }
+        function setupModeSwitches() {
+            document.querySelectorAll('input[name="net_mode"]').forEach(radio => {
+                radio.addEventListener('change', function() {
+                    const staticFields = document.getElementById('static-fields');
+                    staticFields.style.display = this.value === 'static' ? 'block' : 'none';
+                });
+            });
+            document.querySelectorAll('input[name="mirror_mode"]').forEach(radio => {
+                radio.addEventListener('change', function() {
+                    document.getElementById('default-mirror').style.display = this.value === 'default' ? 'block' : 'none';
+                    document.getElementById('custom-mirrors').style.display = this.value === 'custom' ? 'block' : 'none';
+                });
+            });
+            document.getElementById('enable_ipxe').addEventListener('change', function() {
+                document.getElementById('ipxe-fields').style.display = this.checked ? 'block' : 'none';
+            });
+            document.getElementById('enable_ansible').addEventListener('change', function() {
+                document.getElementById('ansible-fields').style.display = this.checked ? 'block' : 'none';
+            });
+            document.getElementById('enable_font').addEventListener('change', function() {
+                document.getElementById('font-settings').style.display = this.checked ? 'block' : 'none';
+            });
+            document.querySelectorAll('.toggle-header').forEach(header => {
+                header.addEventListener('click', function() {
+                    const content = this.nextElementSibling;
+                    const icon = this.querySelector('.toggle-icon');
+                    if (content.classList.contains('active')) {
+                        content.classList.remove('active');
+                        icon.textContent = '▶';
+                    } else {
+                        content.classList.add('active');
+                        icon.textContent = '▼';
+                    }
+                });
+            });
+            document.querySelectorAll('.rename-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const card = this.closest('.preset-card');
+                    const input = card.querySelector('.preset-name-input');
+                    const label = card.querySelector('.preset-name-label');
+                    if (input.style.display === 'none') {
+                        input.style.display = 'block';
+                        input.value = label.textContent;
+                        input.focus();
+                        this.textContent = 'Сохранить';
+                    } else {
+                        const newName = input.value.trim();
+                        if (newName) {
+                            const preset = card.dataset.preset;
+                            presetNames[preset] = newName;
+                            label.textContent = newName;
+                        }
+                        input.style.display = 'none';
+                        this.textContent = 'Переименовать';
+                    }
+                });
+            });
+        }
+        function setupDiskVisualization() {
+            function updateVisualization() {
+                const diskSize = parseInt(document.getElementById('disk_size').value) || 500;
+                const diskCount = parseInt(document.getElementById('disk_count').value) || 1;
+                const raidLevel = document.getElementById('raid_level').value;
+                const hotSpare = document.getElementById('hot_spare').checked;
+                let totalSpace;
+                if (raidLevel === '0') totalSpace = diskSize * diskCount;
+                else if (raidLevel === '1') totalSpace = diskSize;
+                const used = [
+                    parseInt(document.getElementById('efi_size').value) || 0,
+                    parseInt(document.getElementById('boot_size').value) || 0,
+                    parseInt(document.getElementById('root_size').value) || 0,
+                    parseInt(document.getElementById('home_size').value) || 0,
+                    parseInt(document.getElementById('var_size').value) || 0,
+                    parseInt(document.getElementById('swap_size').value) || 0
+                ].reduce((a, b) => a + b, 0);
+                const remaining = totalSpace - used;
+                const percent = Math.min(100, Math.round((used / totalSpace) * 100));
+                document.getElementById('total-space').textContent = `${totalSpace} GB`;
+                document.getElementById('used-space').textContent = `${used} GB`;
+                document.getElementById('percent-used').textContent = `${percent}%`;
+                const segments = [
+                    {id: 'efi', size: parseInt(document.getElementById('efi_size').value) || 0},
+                    {id: 'boot', size: parseInt(document.getElementById('boot_size').value) || 0},
+                    {id: 'root', size: parseInt(document.getElementById('root_size').value) || 0},
+                    {id: 'home', size: parseInt(document.getElementById('home_size').value) || 0},
+                    {id: 'var', size: parseInt(document.getElementById('var_size').value) || 0},
+                    {id: 'swap', size: parseInt(document.getElementById('swap_size').value) || 0}
+                ];
+                let totalUsed = segments.reduce((sum, seg) => sum + seg.size, 0);
+                segments.forEach(seg => {
+                    const width = totalUsed > 0 ? (seg.size / totalUsed) * 100 : 0;
+                    const el = document.querySelector(`.chart-segment.${seg.id}`);
+                    el.style.width = `${width}%`;
+                });
+                document.getElementById('disk-warning').style.display =
+                    remaining < (totalSpace * 0.1) ? 'block' : 'none';
+                updatePresetPreviews();
+            }
+            const inputs = [
+                'disk_size', 'disk_count', 'raid_level', 'hot_spare',
+                'efi_size', 'boot_size', 'root_size',
+                'home_size', 'var_size', 'swap_size'
+            ];
+            inputs.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.addEventListener('input', updateVisualization);
+            });
+            document.getElementById('auto-calc').addEventListener('click', function() {
+                const diskSize = parseInt(document.getElementById('disk_size').value) || 500;
+                const diskCount = parseInt(document.getElementById('disk_count').value) || 1;
+                const raidLevel = document.getElementById('raid_level').value;
+                const hotSpare = document.getElementById('hot_spare').checked;
+                let totalSpace;
+                if (raidLevel === '0') totalSpace = diskSize * diskCount;
+                else if (raidLevel === '1') totalSpace = diskSize;
+                const recommended = {
+                    root: Math.min(100, Math.floor(totalSpace * 0.4)),
+                    home: Math.min(50, Math.floor(totalSpace * 0.3)),
+                    var: Math.min(30, Math.floor(totalSpace * 0.2)),
+                    swap: Math.min(16, Math.max(4, Math.floor((diskSize * 0.02))))
+                };
+                document.getElementById('root_size').value = recommended.root;
+                document.getElementById('home_size').value = recommended.home;
+                document.getElementById('var_size').value = recommended.var;
+                document.getElementById('swap_size').value = recommended.swap;
+                updateVisualization();
+            });
+            updateVisualization();
+        }
+        function updatePresetPreviews() {
+            const diskSize = parseInt(document.getElementById('disk_size').value) || 500;
+            const diskCount = parseInt(document.getElementById('disk_count').value) || 1;
+            const raidLevel = document.getElementById('raid_level').value;
+            const hotSpare = document.getElementById('hot_spare').checked;
+            let totalSpace;
+            if (raidLevel === '0') totalSpace = diskSize * diskCount;
+            else if (raidLevel === '1') totalSpace = diskSize;
+            document.getElementById('custom-disk-count').textContent = diskCount;
+            document.getElementById('custom-raid-level').textContent = raidLevel + (hotSpare ? ' + hot spare' : '');
+            document.getElementById('server-disk-count').textContent = diskCount;
+            document.getElementById('server-disk-size').textContent = `${diskSize}GB`;
+            document.getElementById('server-raid-space').textContent = `${totalSpace}GB`;
+            document.getElementById('desktop-disk-count').textContent = diskCount;
+            document.getElementById('desktop-disk-size').textContent = `${diskSize}GB`;
+            document.getElementById('desktop-raid-space').textContent = `${totalSpace}GB`;
+        }
+        function setupPresetCards() {
+            document.querySelectorAll('.preset-card').forEach(card => {
+                card.addEventListener('click', function() {
+                    document.querySelectorAll('.preset-card').forEach(c => {
+                        c.classList.remove('active');
+                    });
+                    this.classList.add('active');
+                    const preset = this.dataset.preset;
+                    if (preset === 'server') {
+                        document.getElementById('raid_level').value = '1';
+                        document.getElementById('hot_spare').checked = false;
+                        document.getElementById('disk_count').value = '2';
+                        document.getElementById('disk_size').value = '500';
+                        document.getElementById('efi_size').value = '512';
+                        document.getElementById('boot_size').value = '2048';
+                        document.getElementById('root_size').value = '100';
+                        document.getElementById('home_size').value = '200';
+                        document.getElementById('var_size').value = '80';
+                        document.getElementById('swap_size').value = '16';
+                        document.getElementById('enable_ipxe').checked = true;
+                        document.getElementById('enable_ansible').checked = true;
+                        document.getElementById('install_base_packages').checked = true;
+                        document.getElementById('enable_root_ssh').checked = true;
+                        document.getElementById('disable_sound').checked = true;
+                        document.getElementById('extended_registration').checked = true;
+                    } else if (preset === 'desktop') {
+                        document.getElementById('raid_level').value = '1';
+                        document.getElementById('hot_spare').checked = false;
+                        document.getElementById('disk_count').value = '2';
+                        document.getElementById('disk_size').value = '1000';
+                        document.getElementById('efi_size').value = '512';
+                        document.getElementById('boot_size').value = '1024';
+                        document.getElementById('root_size').value = '200';
+                        document.getElementById('home_size').value = '600';
+                        document.getElementById('var_size').value = '50';
+                        document.getElementById('swap_size').value = '32';
+                        document.getElementById('enable_ipxe').checked = false;
+                        document.getElementById('install_base_packages').checked = true;
+                        document.getElementById('enable_root_ssh').checked = true;
+                        document.getElementById('disable_sound').checked = true;
+                    }
+                    setupModeSwitches();
+                    setupDiskVisualization();
+                    goToStep(1);
+                });
+            });
+        }
+        function setupValidation() {
+            document.getElementById('root_password').addEventListener('input', function() {
+                const strength = checkPasswordStrength(this.value);
+                const strengthBar = document.getElementById('password-strength');
+                strengthBar.className = 'password-strength ' + strength.level;
+                if (strength.score < 3) {
+                    this.setCustomValidity("Пароль слишком слабый");
+                } else {
+                    this.setCustomValidity("");
+                }
+            });
+            function checkPasswordStrength(password) {
+                let score = 0;
+                let level = "very-weak";
+                if (password.length >= 8) score++;
+                if (/[A-Z]/.test(password)) score++;
+                if (/[a-z]/.test(password)) score++;
+                if (/[0-9]/.test(password)) score++;
+                if (/[^A-Za-z0-9]/.test(password)) score++;
+                if (score === 2) level = "weak";
+                else if (score === 3) level = "good";
+                else if (score >= 4) level = "strong";
+                return {score, level};
+            }
+            document.getElementById('preview-btn').addEventListener('click', async function() {
+                const form = document.getElementById('preseed-form');
+                const previewArea = document.getElementById('preview-area');
+                previewArea.textContent = 'Генерация...';
+                previewArea.style.display = 'block';
+                try {
+                    const formData = new FormData(form);
+                    const response = await fetch(BASE_URL + 'preview', {
+                        method: 'POST',
+                        body: new URLSearchParams(formData)
+                    });
+                    if (!response.ok) {
+                        throw new Error(await response.text());
+                    }
+                    const preview = await response.text();
+                    previewArea.textContent = preview;
+                } catch (error) {
+                    previewArea.innerHTML = `<span style="color: var(--danger);">Ошибка: ${error.message}</span>`;
+                }
+            });
+        }
+        function setupTemplateHandlers() {
+            async function loadTemplates() {
+                try {
+                    const response = await fetch(BASE_URL + 'api/templates');
+                    const templates = await response.json();
+                    const select = document.getElementById('load-template');
+                    select.innerHTML = '<option value="">-- Выберите шаблон --</option>';
+                    templates.forEach(template => {
+                        const option = document.createElement('option');
+                        option.value = template.name;
+                        option.textContent = template.name;
+                        select.appendChild(option);
+                    });
+                } catch (e) {
+                    console.error("Ошибка загрузки шаблонов:", e);
+                }
+            }
+            document.getElementById('save-template').addEventListener('click', async function() {
+                const name = document.getElementById('template-name').value.trim();
+                if (!name) {
+                    alert("Введите имя шаблона");
+                    return;
+                }
+                const form = document.getElementById('preseed-form');
+                const formData = new FormData(form);
+                const data = {};
+                for (const [key, value] of formData) {
+                    data[key] = value;
+                }
+                data.presetNames = JSON.stringify(presetNames);
+                try {
+                    const response = await fetch(BASE_URL + 'api/save-template', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name, data })
+                    });
+                    if (response.ok) {
+                        alert("Шаблон сохранен!");
+                        document.getElementById('template-name').value = '';
+                        loadTemplates();
+                    } else {
+                        alert("Ошибка сохранения: " + await response.text());
+                    }
+                } catch (e) {
+                    alert("Ошибка сети: " + e.message);
+                }
+            });
+            document.getElementById('apply-template').addEventListener('click', async function() {
+                const templateName = document.getElementById('load-template').value;
+                if (!templateName) return;
+                try {
+                    const response = await fetch(BASE_URL + 'api/template/' + encodeURIComponent(templateName));
+                    const data = await response.json();
+                    Object.keys(data).forEach(key => {
+                        if (key === 'presetNames') {
+                            try {
+                                presetNames = JSON.parse(data[key]);
+                                initPresetNames();
+                            } catch (e) {
+                                console.error("Ошибка парсинга presetNames:", e);
+                            }
+                            return;
+                        }
+                        const el = document.querySelector(`[name="${key}"]`);
+                        if (el) {
+                            if (el.type === 'checkbox' || el.type === 'radio') {
+                                el.checked = (data[key] === 'on' || data[key] === true || data[key] === 'true');
+                            } else {
+                                el.value = data[key];
+                            }
+                        }
+                    });
+                    setupModeSwitches();
+                    setupDiskVisualization();
+                    alert("Шаблон применен!");
+                } catch (e) {
+                    alert("Ошибка загрузки шаблона: " + e.message);
+                }
+            });
+            loadTemplates();
+        }
+        function setupHistoryHandlers() {
+            async function loadHistory() {
+                try {
+                    const response = await fetch(BASE_URL + 'api/history');
+                    const history = await response.json();
+                    const historyList = document.getElementById('history-list');
+                    historyList.innerHTML = '';
+                    if (history.length === 0) {
+                        historyList.innerHTML = '<div class="history-item">История пуста</div>';
+                        return;
+                    }
+                    history.slice(-5).reverse().forEach(item => {
+                        const div = document.createElement('div');
+                        div.className = 'history-item';
+                        div.innerHTML = `
+                            <strong>${new Date(item.timestamp).toLocaleString()}</strong> |
+                            <span>Хост: ${item.params.hostname}</span>
+                            <div style="display: flex; gap: 10px; margin-top: 8px;">
+                                <button class="btn btn-warning" style="padding: 5px 10px; font-size: 0.9em;" onclick="loadHistoryItem('${item.timestamp}')">Загрузить</button>
+                                <button class="btn btn-success" style="padding: 5px 10px; font-size: 0.9em;" onclick="downloadHistoryItem('${item.timestamp}')">Скачать</button>
+                            </div>
+                        `;
+                        historyList.appendChild(div);
+                    });
+                } catch (e) {
+                    console.error("Ошибка загрузки истории:", e);
+                }
+            }
+            window.loadHistoryItem = async function(timestamp) {
+                try {
+                    const response = await fetch(BASE_URL + 'api/history');
+                    const history = await response.json();
+                    const item = history.find(h => h.timestamp === timestamp);
+                    if (!item) return;
+                    Object.keys(item.params).forEach(key => {
+                        if (key === 'presetNames') {
+                            try {
+                                presetNames = JSON.parse(item.params[key]);
+                                initPresetNames();
+                            } catch (e) {
+                                console.error("Ошибка парсинга presetNames:", e);
+                            }
+                            return;
+                        }
+                        const el = document.querySelector(`[name="${key}"]`);
+                        if (el) {
+                            if (el.type === 'checkbox' || el.type === 'radio') {
+                                el.checked = (item.params[key] === 'on' || item.params[key] === true || item.params[key] === 'true');
+                            } else {
+                                el.value = item.params[key];
+                            }
+                        }
+                    });
+                    setupModeSwitches();
+                    setupDiskVisualization();
+                    alert("Конфигурация из истории загружена!");
+                } catch (e) {
+                    alert("Ошибка загрузки из истории: " + e.message);
+                }
+            };
+            window.downloadHistoryItem = async function(timestamp) {
+                try {
+                    const response = await fetch(BASE_URL + 'api/history');
+                    const history = await response.json();
+                    const item = history.find(h => h.timestamp === timestamp);
+                    if (!item) return;
+                    const blob = new Blob([item.preseed_preview.replace('...', '')], {type: 'text/plain'});
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `debian12-preseed-${item.params.hostname}.cfg`;
+                    document.body.appendChild(a);
+                    a.click();
+                    setTimeout(() => {
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                    }, 100);
+                } catch (e) {
+                    alert("Ошибка скачивания: " + e.message);
+                }
+            };
+            loadHistory();
+        }
+    </script>
+</body>
+</html>
