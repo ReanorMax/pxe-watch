@@ -2,7 +2,7 @@ from flask import Blueprint, render_template
 import datetime
 import logging
 
-from config import LOCAL_OFFSET
+from config import LOCAL_OFFSET, ANSIBLE_FILES_DIR
 from db_utils import get_db
 from services import get_ansible_mark
 
@@ -62,4 +62,9 @@ def dashboard():
             'online': is_online,
             'details': details or '',
         })
-    return render_template('dashboard.html', hosts=hosts, stage_labels=STAGE_LABELS)
+    return render_template(
+        'dashboard.html',
+        hosts=hosts,
+        stage_labels=STAGE_LABELS,
+        ansible_files_path=ANSIBLE_FILES_DIR,
+    )
