@@ -56,12 +56,29 @@ api_bp.route('/ansible/templates/<path:filename>', methods=['POST'])(template_po
 
 @api_bp.route('/ansible/files', methods=['GET'])
 def api_ansible_files_list():
-    return list_files_in_dir(ANSIBLE_FILES_DIR)
+    rel_path = request.args.get('path', '').strip()
+    base_dir = os.path.abspath(ANSIBLE_FILES_DIR)
+    target_dir = os.path.abspath(os.path.join(base_dir, rel_path))
+    if not target_dir.startswith(base_dir):
+        return jsonify({'error': 'Invalid path'}), 400
+    try:
+        files = list_files_in_dir(target_dir)
+        parent = os.path.relpath(os.path.dirname(target_dir), base_dir) if rel_path else ''
+        if parent == '.':
+            parent = ''
+        return jsonify({'files': files, 'path': rel_path, 'parent': parent})
+    except Exception as e:
+        logging.error(f"Ошибка при получении списка файлов из {target_dir}: {e}")
+        return jsonify({'error': str(e)}), 500
 
 
 @api_bp.route('/ansible/templates', methods=['GET'])
 def api_ansible_templates_list():
-    return list_files_in_dir(ANSIBLE_TEMPLATES_DIR)
+    try:
+        return jsonify(list_files_in_dir(ANSIBLE_TEMPLATES_DIR))
+    except Exception as e:
+        logging.error(f"Ошибка при получении списка шаблонов: {e}")
+        return jsonify({'error': str(e)}), 500
 
 
 @api_bp.route('/ansible/status/<ip>', methods=['GET'])

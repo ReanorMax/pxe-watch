@@ -150,57 +150,97 @@
     setupSaveButton('save-dnsmasq', '/api/dnsmasq', 'dnsmasq-content', () => closeModal(document.getElementById('dnsmasq-modal')));
     setupSaveButton('save-playbook', '/api/ansible/playbook', null, () => closeModal(document.getElementById('playbook-modal')), true);
     setupSaveButton('save-inventory', '/api/ansible/inventory', 'inventory-content', () => closeModal(document.getElementById('inventory-modal')));
-    document.getElementById('manage-files').onclick = async () => {
+    let currentFilesPath = '';
+    const baseFilesPath = document.getElementById('files-modal-title').textContent.replace(/^Файлы\s*/, '');
+    async function loadFilesList() {
         const listBody = document.getElementById('files-simple-list-body');
         listBody.innerHTML = '<tr><td colspan="3" style="text-align: center;">Загрузка...</td></tr>';
-        openModal(document.getElementById('files-modal'));
         try {
-            const res = await fetch('/api/ansible/files');
-            const files = await res.json();
+            const res = await fetch(`/api/ansible/files?path=${encodeURIComponent(currentFilesPath)}`);
+            const data = await res.json();
             listBody.innerHTML = '';
-            if (files.error) {
-                 listBody.innerHTML = `<tr><td colspan="3" style="color:var(--danger);">Ошибка: ${files.error}</td></tr>`;
-                 return;
+            if (data.error) {
+                listBody.innerHTML = `<tr><td colspan="3" style="color:var(--danger);">Ошибка: ${data.error}</td></tr>`;
+                return;
             }
-            if (files.length === 0) {
-                 listBody.innerHTML = '<tr><td colspan="3" style="text-align: center; font-style: italic;">Файлы не найдены</td></tr>';
-                 return;
+            if (!Array.isArray(data.files)) {
+                throw new Error('Некорректный формат ответа сервера');
             }
-            files.forEach(file => {
+            const title = document.getElementById('files-modal-title');
+            title.textContent = `Файлы ${baseFilesPath}${currentFilesPath ? '/' + currentFilesPath : ''}`;
+            if (currentFilesPath) {
+                const upTr = document.createElement('tr');
+                upTr.innerHTML = '<td colspan="3" style="cursor:pointer">..</td>';
+                upTr.onclick = () => {
+                    currentFilesPath = data.parent;
+                    loadFilesList();
+                };
+                listBody.appendChild(upTr);
+            }
+            if (data.files.length === 0) {
+                listBody.innerHTML += '<tr><td colspan="3" style="text-align: center; font-style: italic;">Файлы не найдены</td></tr>';
+                return;
+            }
+            data.files.forEach(file => {
                 const tr = document.createElement('tr');
                 const escapedName = file.name.replace(/&/g, "&amp;").replace(/</g, "<").replace(/>/g, ">").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
-                tr.innerHTML = `<td title="${escapedName}">${escapedName}</td><td>${file.size}</td><td>${file.modified}</td>`;
+                if (file.is_dir) {
+                    tr.innerHTML = `<td title="${escapedName}" style="cursor:pointer">${escapedName}</td><td>-</td><td>${file.modified}</td>`;
+                    tr.querySelector('td').onclick = () => {
+                        currentFilesPath = currentFilesPath ? `${currentFilesPath}/${file.name}` : file.name;
+                        loadFilesList();
+                    };
+                } else {
+                    tr.innerHTML = `<td title="${escapedName}">${escapedName}</td><td>${file.size}</td><td>${file.modified}</td>`;
+                }
                 listBody.appendChild(tr);
             });
         } catch (e) {
             console.error("Ошибка при загрузке списка файлов:", e);
             listBody.innerHTML = `<tr><td colspan="3" style="color:var(--danger);">Ошибка загрузки: ${e.message}</td></tr>`;
         }
-    };
-    document.getElementById('add-dhcp-host').onclick = () => {
-      const mac = prompt('MAC:');
-      const ip = prompt('IP:');
-      if (mac && ip) {
-        const textarea = document.getElementById('dnsmasq-content');
-        textarea.value = `dhcp-host=${mac},${ip},12h\n${textarea.value}`;
-      }
-    };
-    document.getElementById('clear-db').onclick = async () => {
-      if (!confirm('Удалить базу данных?')) return;
-      try {
-        const res = await fetch('/api/clear-db', { method: 'POST' });
-        if (!res.ok) throw new Error((await res.json()).msg);
-        alert('База очищена.');
-        location.reload();
-      } catch (e) {
-        alert('Ошибка: ' + e.message);
-      }
-    };
-    document.getElementById('toggle-ansible').onclick = () => {
-      const p = document.getElementById('ansible-panel');
-      p.style.display = p.style.display === 'none' ? 'block' : 'none';
-      if (p.style.display === 'block') loadAnsibleLog();
-    };
+    }
+    const manageFilesBtn = document.getElementById('manage-files');
+    if (manageFilesBtn) {
+        manageFilesBtn.onclick = () => {
+            currentFilesPath = '';
+            openModal(document.getElementById('files-modal'));
+            loadFilesList();
+        };
+    }
+    const addDhcpHostBtn = document.getElementById('add-dhcp-host');
+    if (addDhcpHostBtn) {
+        addDhcpHostBtn.onclick = () => {
+            const mac = prompt('MAC:');
+            const ip = prompt('IP:');
+            if (mac && ip) {
+                const textarea = document.getElementById('dnsmasq-content');
+                textarea.value = `dhcp-host=${mac},${ip},12h\n${textarea.value}`;
+            }
+        };
+    }
+    const clearDbBtn = document.getElementById('clear-db');
+    if (clearDbBtn) {
+        clearDbBtn.onclick = async () => {
+            if (!confirm('Удалить базу данных?')) return;
+            try {
+                const res = await fetch('/api/clear-db', { method: 'POST' });
+                if (!res.ok) throw new Error((await res.json()).msg);
+                alert('База очищена.');
+                location.reload();
+            } catch (e) {
+                alert('Ошибка: ' + e.message);
+            }
+        };
+    }
+    const toggleAnsibleBtn = document.getElementById('toggle-ansible');
+    if (toggleAnsibleBtn) {
+        toggleAnsibleBtn.onclick = () => {
+            const p = document.getElementById('ansible-panel');
+            p.style.display = p.style.display === 'none' ? 'block' : 'none';
+            if (p.style.display === 'block') loadAnsibleLog();
+        };
+    }
     async function loadAnsibleLog() {
       try {
         const res = await fetch('/api/logs/ansible');
