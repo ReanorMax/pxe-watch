@@ -8,7 +8,6 @@ monitoring logs and journal of remote hosts is available from a single panel.
 
 import os
 import shlex
-import sqlite3
 import json
 import subprocess
 import re
@@ -23,12 +22,12 @@ from flask import (
     render_template,
 )
 from config import ANSIBLE_INVENTORY
+from db_utils import get_db
 
 # ---------------------------------------------------------------------------
 # Константы и настройки
 # ---------------------------------------------------------------------------
 INI_FILE = ANSIBLE_INVENTORY
-DB_FILE = "logtail.sqlite"
 
 logtail_bp = Blueprint("logtail", __name__)
 
@@ -37,10 +36,8 @@ logtail_bp = Blueprint("logtail", __name__)
 # Helpers
 # ---------------------------------------------------------------------------
 def get_logtail_db():
-    """Return connection to local sqlite database used by log viewer."""
-    conn = sqlite3.connect(DB_FILE, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    return conn
+    """Return shared application database connection for log viewer."""
+    return get_db()
 
 
 def init_logtail_db():
