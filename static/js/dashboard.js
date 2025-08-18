@@ -273,38 +273,6 @@
     });
     overlay.onclick = () => modals.forEach(closeModal);
 
-    // ==== Интеграция с Semaphore API ====
-    async function loadSemaphoreStatus() {
-      try {
-        const res = await fetch('/api/semaphore/status');
-        const data = await res.json();
-        const el = document.getElementById('semaphore-status');
-        if (!el) return;
-
-        if (data.status === 'error') {
-          el.innerHTML = `<i class="fas fa-exclamation-triangle" style="color:var(--danger)"></i> Ошибка API`;
-          return;
-        }
-
-        const icon = data.icon || '🟡';
-        const timePart = data.time ? ` ${data.time}` : '';
-        const msg = data.commit_message || 'Ansible запущен';
-
-        el.innerHTML = `
-          <div style="display:flex;align-items:center;gap:6px;font-size:0.9em;">
-            <span style="display:flex;align-items:center;">${icon}</span>
-            <span style="opacity:0.9;">${msg}${timePart}</span>
-          </div>
-        `;
-      } catch (e) {
-        console.error("Ошибка загрузки статуса Semaphore:", e);
-        const el = document.getElementById('semaphore-status');
-        if (el) {
-          el.innerHTML = `<i class="fas fa-exclamation-triangle" style="color:var(--danger)"></i> Ошибка загрузки`;
-        }
-      }
-    }
-
     document.getElementById('run-ansible').onclick = async () => {
       if (!confirm('Запустить Ansible на всех хостах?')) return;
       try {
@@ -312,8 +280,6 @@
         const data = await res.json();
         if (res.ok) {
           alert(`Ansible запущен! Task ID: ${data.task_id}`);
-          // Обновляем статус сразу после запуска
-          loadSemaphoreStatus();
         } else {
           alert('Ошибка: ' + (data.msg || 'Неизвестная ошибка'));
         }
@@ -321,8 +287,3 @@
         alert('Ошибка: ' + e.message);
       }
     };
-
-    // Автообновление статуса каждые 30 секунд
-    setInterval(loadSemaphoreStatus, 30000);
-    // Загружаем статус при загрузке страницы
-    document.addEventListener('DOMContentLoaded', loadSemaphoreStatus);

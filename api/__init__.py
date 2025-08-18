@@ -27,15 +27,11 @@ from services import (
     list_files_in_dir,
     get_ansible_mark,
     create_file_api_handlers,
-    get_semaphore_status,
     trigger_semaphore_playbook,
 )
+from services.registration import register_host
 
 api_bp = Blueprint('api', __name__, url_prefix='/api')
-
-@api_bp.route('/semaphore/status', methods=['GET'])
-def api_semaphore_status():
-    return jsonify(get_semaphore_status())
 
 @api_bp.route('/semaphore/trigger', methods=['POST'])
 def api_semaphore_trigger():
@@ -48,23 +44,10 @@ def api_register():
     ip = request.values.get('ip', request.remote_addr)
     stage = request.values.get('stage', 'unknown')
     details = request.values.get('details', '')
-    if not mac:
-        logging.warning('Отсутствует MAC-адрес в запросе')
-        return 'Missing MAC', 400
-    ts = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
     try:
-        with get_db() as db:
-            db.execute('''
-                INSERT INTO hosts(mac, ip, stage, details, ts, first_ts)
-                VALUES (?, ?, ?, ?, ?, ?)
-                ON CONFLICT(mac) DO UPDATE SET
-                    ip = excluded.ip,
-                    stage = excluded.stage,
-                    details = excluded.details,
-                    ts = excluded.ts,
-                    first_ts = COALESCE(hosts.first_ts, excluded.ts)
-            ''', (mac, ip, stage, details, ts, ts))
-        logging.info(f'Зарегистрирован или обновлен хост с MAC: {mac}')
+        register_host(mac, ip, stage, details)
+    except ValueError:
+        return 'Missing MAC', 400
     except Exception as e:
         logging.error(f'Ошибка при регистрации хоста: {e}')
         return 'Error', 500
