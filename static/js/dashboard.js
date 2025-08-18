@@ -185,7 +185,19 @@
       generateBtn.onclick = () => {
         const count = parseInt(document.getElementById('disk-count').value, 10) || 1;
         const size = parseInt(document.getElementById('disk-size').value, 10) || 0;
-        document.getElementById('preseed-content').value = generatePartitionPreseed(count, size);
+        const textarea = document.getElementById('preseed-content');
+        const snippet = generatePartitionPreseed(count, size);
+        let start = textarea.selectionStart;
+        let end = textarea.selectionEnd;
+        if (start === null || end === null) {
+          start = end = textarea.value.length;
+        }
+        const before = textarea.value.slice(0, start);
+        const after = textarea.value.slice(end);
+        const prefix = before && !before.endsWith('\n') ? '\n' : '';
+        textarea.value = before + prefix + snippet + after;
+        const cursorPos = (before + prefix + snippet).length;
+        textarea.setSelectionRange(cursorPos, cursorPos);
       };
     }
     let currentFilesPath = '';
