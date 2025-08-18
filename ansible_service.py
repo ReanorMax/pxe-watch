@@ -1,24 +1,25 @@
 #!/usr/bin/env python3
-"""
-PXE Dashboard + Ansible + WebSocket
-"""
+"""Blueprint providing Ansible task API and Socket.IO events."""
+
 import datetime
 import logging
 import subprocess
 import configparser
 
-from flask import Flask, jsonify
+from flask import Blueprint, jsonify
 from flask_socketio import SocketIO
 from config import ANSIBLE_PLAYBOOK, ANSIBLE_INVENTORY
-from api import api_bp
-from web import web_bp
 from db_utils import get_db
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-app = Flask(__name__)
-socketio = SocketIO(app, cors_allowed_origins="*")
-app.register_blueprint(api_bp)
-app.register_blueprint(web_bp)
+logging.basicConfig(
+    level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s'
+)
+
+# Socket.IO instance will be initialized by the main application
+socketio = SocketIO(cors_allowed_origins="*")
+
+# Blueprint for Ansible service routes
+ansible_bp = Blueprint('ansible_service', __name__, url_prefix='/api/ansible')
 
 def get_macs_from_inventory():
     try:
@@ -34,7 +35,7 @@ def get_macs_from_inventory():
         return []
 
 # ==== API: Ansible ====
-@app.route('/api/ansible/task/<mac>')
+@ansible_bp.route('/task/<mac>')
 def api_ansible_task(mac):
     with get_db() as db:
         task = db.execute('''
@@ -43,7 +44,7 @@ def api_ansible_task(mac):
         ''', (mac,)).fetchone()
         return jsonify(dict(task) if task else {})
 
-@app.route('/api/ansible/clients')
+@ansible_bp.route('/clients')
 def api_ansible_clients():
     with get_db() as db:
         rows = db.execute('''
@@ -53,7 +54,7 @@ def api_ansible_clients():
         return jsonify([dict(r) for r in rows])
 
 # Route specific to ansible_service: launch playbook and broadcast progress
-@app.route('/api/ansible/run', methods=['POST'])
+@ansible_bp.route('/run', methods=['POST'])
 def api_ansible_run():
     try:
         macs = get_macs_from_inventory()
@@ -100,6 +101,6 @@ def api_ansible_run():
         logging.error(f"Ошибка запуска ansible-playbook: {e}")
         return jsonify({'status': 'error', 'msg': str(e)}), 500
 
-# ==== Запуск ====
-if __name__ == '__main__':
-    socketio.run(app, host='0.0.0.0', port=5002)
+# No standalone execution; the blueprint and socketio are used within the main app
+
+__all__ = ['ansible_bp', 'socketio']
