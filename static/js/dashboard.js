@@ -180,12 +180,32 @@
       }
       return lines.join('\n');
     }
+    const preseedTextarea = document.getElementById('preseed-content');
+    let preseedSelStart = 0;
+    let preseedSelEnd = 0;
+    if (preseedTextarea) {
+      const storeSelection = () => {
+        preseedSelStart = preseedTextarea.selectionStart;
+        preseedSelEnd = preseedTextarea.selectionEnd;
+      };
+      ['mouseup', 'keyup', 'select'].forEach(evt => {
+        preseedTextarea.addEventListener(evt, storeSelection);
+      });
+    }
     const generateBtn = document.getElementById('generate-preseed');
-    if (generateBtn) {
+    if (generateBtn && preseedTextarea) {
       generateBtn.onclick = () => {
         const count = parseInt(document.getElementById('disk-count').value, 10) || 1;
         const size = parseInt(document.getElementById('disk-size').value, 10) || 0;
-        document.getElementById('preseed-content').value = generatePartitionPreseed(count, size);
+        const snippet = generatePartitionPreseed(count, size);
+        let start = preseedSelStart;
+        let end = preseedSelEnd;
+        if (start === null || end === null) {
+          start = end = preseedTextarea.value.length;
+        }
+        const prefix = start > 0 && preseedTextarea.value[start - 1] !== '\n' ? '\n' : '';
+        preseedTextarea.focus();
+        preseedTextarea.setRangeText(prefix + snippet, start, end, 'end');
       };
     }
     let currentFilesPath = '';
