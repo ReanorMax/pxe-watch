@@ -126,7 +126,7 @@
     <div class="controls"><button class="btn" id="save-inventory"><i class="fa fa-save"></i> Сохранить</button></div>
   </div>
   <div class="modal" id="files-modal">
-    <header><span>Файлы {{ ansible_files_path }}</span><button class="btn close-modal" data-modal="files-modal"><i class="fa fa-times"></i></button></header>
+    <header><span id="files-modal-title">Файлы {{ ansible_files_path }}</span><button class="btn close-modal" data-modal="files-modal"><i class="fa fa-times"></i></button></header>
     <div class="file-list-simple-container">
       <table class="file-simple-table">
         <thead>
