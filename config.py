@@ -18,7 +18,10 @@ ANSIBLE_FILES_DIR = os.getenv('ANSIBLE_FILES_DIR', '/home/ansible-offline/files'
 ANSIBLE_TEMPLATES_DIR = os.getenv('ANSIBLE_TEMPLATES_DIR', '/root/ansible/templates')
 SSH_PASSWORD = os.getenv('SSH_PASSWORD', 'Q1w2a3s40007')
 SSH_USER = os.getenv('SSH_USER', 'root')
-SSH_OPTIONS = os.getenv('SSH_OPTIONS', '-o StrictHostKeyChecking=no')
+SSH_OPTIONS = os.getenv(
+    'SSH_OPTIONS',
+    '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+)
 ANSIBLE_SERVICE_NAME = os.getenv('ANSIBLE_SERVICE_NAME', 'ansible-api.service')
 SEMAPHORE_API = os.getenv('SEMAPHORE_API', 'http://10.19.1.90:3000/api')
 SEMAPHORE_TOKEN = os.getenv('SEMAPHORE_TOKEN', 'pkoqhsremgn9s_4d1qdrzf9lgxzmn8e9nwtjjillvss=')
