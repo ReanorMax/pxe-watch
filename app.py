@@ -1,5 +1,3 @@
-import os
-import subprocess
 import logging
 from flask import Flask
 
@@ -7,6 +5,7 @@ from logtail import logtail_bp
 from api import api_bp
 from web import web_bp
 from tasks import start_background_tasks
+from extensions import socketio
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -19,22 +18,14 @@ def create_app() -> Flask:
     app.register_blueprint(api_bp)
     app.register_blueprint(web_bp)
 
+    socketio.init_app(app, cors_allowed_origins="*")
+
     return app
 
 
 app = create_app()
 
-def start_ansible_service() -> None:
-    """Start auxiliary ansible_service in background."""
-    service_path = os.path.join(os.path.dirname(__file__), 'ansible_service.py')
-    try:
-        subprocess.Popen(['python3', service_path])
-        logging.info('Ansible service started')
-    except Exception as e:
-        logging.error(f'Failed to start ansible service: {e}')
-
 
 if __name__ == '__main__':
     start_background_tasks()
-    start_ansible_service()
-    app.run(host='0.0.0.0', port=5000)
+    socketio.run(app, host='0.0.0.0', port=5000)
