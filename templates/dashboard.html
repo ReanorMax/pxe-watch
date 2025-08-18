@@ -99,21 +99,10 @@
   <!-- Модальные окна -->
   <div class="modal" id="preseed-modal">
     <header><span>preseed.cfg</span><button class="btn close-modal" data-modal="preseed-modal"><i class="fa fa-times"></i></button></header>
-    <div class="preseed-controls">
-      <label>Файл:
-        <select id="preseed-file-select">
-          <option value="1">preseed.cfg</option>
-          <option value="2">preseed2.cfg</option>
-        </select>
-      </label>
-      <button class="btn" id="activate-preseed"><i class="fa fa-check"></i> Активировать</button>
-      <button class="btn" id="toggle-partition-config"><i class="fa fa-eye-slash"></i> Скрыть конфигуратор</button>
-    </div>
     <div class="partition-config">
       <h3><i class="fa fa-hdd"></i> Конфигуратор разделов</h3>
       <label>Количество дисков: <input type="number" id="disk-count" value="1" min="1" max="26"></label>
       <label>Размер диска (ГБ): <input type="number" id="disk-size" value="100" min="1"></label>
-      <label><input type="checkbox" id="disk-hotspare"> Hotspare диск</label>
       <button class="btn" id="generate-preseed"><i class="fa fa-calculator"></i> Рассчитать</button>
     </div>
     <textarea id="preseed-content"></textarea>

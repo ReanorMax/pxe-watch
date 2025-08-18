@@ -5,9 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 DB_PATH = os.getenv('DB_PATH', '/opt/pxewatch/pxe.db')
-PRESEED_PATH_1 = os.getenv('PRESEED_PATH', '/var/www/html/debian12/preseed.cfg')
-PRESEED_PATH_2 = os.getenv('PRESEED_PATH_2', '/var/www/html/debian12/preseed2.cfg')
-PRESEED_ACTIVE_FILE = os.getenv('PRESEED_ACTIVE_FILE', '/var/www/html/debian12/preseed.active')
+PRESEED_PATH = os.getenv('PRESEED_PATH', '/var/www/html/debian12/preseed.cfg')
 DNSMASQ_PATH = os.getenv('DNSMASQ_PATH', '/etc/dnsmasq.conf')
 BOOT_IPXE_PATH = os.getenv('BOOT_IPXE_PATH', '/srv/tftp/boot.ipxe')
 AUTOEXEC_IPXE_PATH = os.getenv('AUTOEXEC_IPXE_PATH', '/srv/tftp/autoexec.ipxe')

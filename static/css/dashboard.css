@@ -168,8 +168,6 @@
     .header-group { display: flex; gap: 8px; align-items: center; }
     .divider { width: 1px; height: 24px; background: var(--divider); margin: 0 12px; }
     .actions-cell { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
-    .preseed-controls { padding: 12px; display: flex; gap: 8px; align-items: center; border-bottom: 1px solid var(--border); }
-    .preseed-controls label { display: flex; gap: 8px; align-items: center; }
     .partition-config { padding: 12px; display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid var(--border); }
     .partition-config label { display: flex; gap: 8px; align-items: center; }
     .partition-config input { width: 80px; padding: 4px; }
