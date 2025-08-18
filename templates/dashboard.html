@@ -99,6 +99,12 @@
   <!-- Модальные окна -->
   <div class="modal" id="preseed-modal">
     <header><span>preseed.cfg</span><button class="btn close-modal" data-modal="preseed-modal"><i class="fa fa-times"></i></button></header>
+    <div class="partition-config">
+      <h3><i class="fa fa-hdd"></i> Конфигуратор разделов</h3>
+      <label>Количество дисков: <input type="number" id="disk-count" value="1" min="1" max="26"></label>
+      <label>Размер диска (ГБ): <input type="number" id="disk-size" value="100" min="1"></label>
+      <button class="btn" id="generate-preseed"><i class="fa fa-calculator"></i> Рассчитать</button>
+    </div>
     <textarea id="preseed-content"></textarea>
     <div class="controls"><button class="btn" id="save-preseed"><i class="fa fa-save"></i> Сохранить</button></div>
   </div>
