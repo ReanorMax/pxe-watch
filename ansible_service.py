@@ -2,65 +2,25 @@
 """
 PXE Dashboard + Ansible + WebSocket
 """
-import os
-import pathlib
 import datetime
-import subprocess
 import logging
-import sqlite3
-import uuid
+import subprocess
 import configparser
 
-from flask import Flask, render_template, request, jsonify, abort
-from flask_socketio import SocketIO, emit
+from flask import Flask, render_template, request, jsonify
+from flask_socketio import SocketIO
 from config import (
-    DB_PATH,
     PRESEED_PATH,
-    DNSMASQ_PATH,
-    BOOT_IPXE_PATH,
-    AUTOEXEC_IPXE_PATH,
-    LOGS_DIR,
     ONLINE_TIMEOUT,
     LOCAL_OFFSET,
     ANSIBLE_PLAYBOOK,
     ANSIBLE_INVENTORY,
-    ANSIBLE_FILES_DIR,
-    ANSIBLE_TEMPLATES_DIR,
 )
+from db_utils import get_db
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
-
-# ==== Вспомогательные функции ====
-def get_db():
-    os.makedirs(pathlib.Path(DB_PATH).parent, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH, detect_types=sqlite3.PARSE_DECLTYPES)
-    conn.row_factory = sqlite3.Row
-    conn.execute('''
-        CREATE TABLE IF NOT EXISTS hosts (
-            mac TEXT PRIMARY KEY,
-            ip TEXT,
-            stage TEXT,
-            details TEXT,
-            ts TEXT,
-            first_ts TEXT
-        )
-    ''')
-    conn.execute('''
-        CREATE TABLE IF NOT EXISTS ansible_tasks (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            mac TEXT,
-            task_name TEXT,
-            status TEXT,
-            step INTEGER DEFAULT 0,
-            total_steps INTEGER DEFAULT 1,
-            started_at TEXT,
-            finished_at TEXT,
-            log TEXT
-        )
-    ''')
-    return conn
 
 def get_macs_from_inventory():
     try:

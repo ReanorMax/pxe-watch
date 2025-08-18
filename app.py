@@ -20,7 +20,6 @@ import os
 import pathlib
 import logging
 import subprocess
-import sqlite3
 import datetime
 import threading
 import time
@@ -37,8 +36,6 @@ from config import (
     DNSMASQ_PATH,
     BOOT_IPXE_PATH,
     AUTOEXEC_IPXE_PATH,
-    LOGS_DIR,
-    ONLINE_TIMEOUT,
     LOCAL_OFFSET,
     ANSIBLE_PLAYBOOK,
     ANSIBLE_INVENTORY,
@@ -53,6 +50,7 @@ from config import (
     SEMAPHORE_PROJECT_ID,
     SEMAPHORE_TEMPLATE_ID,
 )
+from db_utils import get_db
 
 # Настройка базового логирования
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -64,48 +62,6 @@ app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 3600
 app.register_blueprint(logtail_bp)
 
 # ==== Вспомогательные функции ====
-def get_db():
-    """
-    Создает и инициализирует соединение с базой данных SQLite.
-    Создает необходимые таблицы, если они не существуют, и настраивает соединение.
-    Таблицы:
-    - hosts: основная информация о хостах и их текущем этапе установки
-    - host_status: результаты пинга для отслеживания онлайн-статуса
-    - playbook_status: статусы выполнения Ansible-плейбуков
-    Returns:
-        sqlite3.Connection: Соединение с базой данных, готовое к использованию
-    """
-    os.makedirs(pathlib.Path(DB_PATH).parent, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH, detect_types=sqlite3.PARSE_DECLTYPES)
-    conn.row_factory = sqlite3.Row
-    conn.execute('''
-        CREATE TABLE IF NOT EXISTS hosts (
-            mac TEXT PRIMARY KEY,  -- MAC-адрес клиента
-            ip TEXT,               -- IP-адрес клиента
-            stage TEXT,            -- Текущий этап установки
-            details TEXT,          -- Дополнительные детали этапа
-            ts TEXT,               -- Время последнего обновления
-            first_ts TEXT          -- Время первого обнаружения
-        )
-    ''')
-    # Создаём таблицу для хранения результатов пинга
-    conn.execute('''
-        CREATE TABLE IF NOT EXISTS host_status (
-            ip TEXT PRIMARY KEY,    -- IP-адрес
-            is_online BOOLEAN,      -- Статус онлайн/оффлайн
-            last_checked TEXT       -- Время последней проверки
-        )
-    ''')
-    # Создаём таблицу для хранения статуса выполнения Ansible плейбука
-    conn.execute('''
-        CREATE TABLE IF NOT EXISTS playbook_status (
-            ip TEXT PRIMARY KEY,    -- IP-адрес целевого хоста
-            status TEXT,            -- Статус выполнения ('ok', 'failed', 'running', 'unknown')
-            updated TEXT            -- Время последнего обновления статуса
-        )
-    ''')
-    return conn
-
 def read_file(path):
     """
     Читает содержимое файла с диска.
