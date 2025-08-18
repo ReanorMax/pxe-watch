@@ -150,32 +150,57 @@
     setupSaveButton('save-dnsmasq', '/api/dnsmasq', 'dnsmasq-content', () => closeModal(document.getElementById('dnsmasq-modal')));
     setupSaveButton('save-playbook', '/api/ansible/playbook', null, () => closeModal(document.getElementById('playbook-modal')), true);
     setupSaveButton('save-inventory', '/api/ansible/inventory', 'inventory-content', () => closeModal(document.getElementById('inventory-modal')));
-    document.getElementById('manage-files').onclick = async () => {
+    let currentFilesPath = '';
+    const baseFilesPath = document.getElementById('files-modal-title').textContent.replace(/^Файлы\s*/, '');
+    async function loadFilesList() {
         const listBody = document.getElementById('files-simple-list-body');
         listBody.innerHTML = '<tr><td colspan="3" style="text-align: center;">Загрузка...</td></tr>';
-        openModal(document.getElementById('files-modal'));
         try {
-            const res = await fetch('/api/ansible/files');
-            const files = await res.json();
+            const res = await fetch(`/api/ansible/files?path=${encodeURIComponent(currentFilesPath)}`);
+            const data = await res.json();
             listBody.innerHTML = '';
-            if (files.error) {
-                 listBody.innerHTML = `<tr><td colspan="3" style="color:var(--danger);">Ошибка: ${files.error}</td></tr>`;
-                 return;
+            if (data.error) {
+                listBody.innerHTML = `<tr><td colspan="3" style="color:var(--danger);">Ошибка: ${data.error}</td></tr>`;
+                return;
             }
-            if (files.length === 0) {
-                 listBody.innerHTML = '<tr><td colspan="3" style="text-align: center; font-style: italic;">Файлы не найдены</td></tr>';
-                 return;
+            const title = document.getElementById('files-modal-title');
+            title.textContent = `Файлы ${baseFilesPath}${currentFilesPath ? '/' + currentFilesPath : ''}`;
+            if (currentFilesPath) {
+                const upTr = document.createElement('tr');
+                upTr.innerHTML = '<td colspan="3" style="cursor:pointer">..</td>';
+                upTr.onclick = () => {
+                    currentFilesPath = data.parent;
+                    loadFilesList();
+                };
+                listBody.appendChild(upTr);
             }
-            files.forEach(file => {
+            if (data.files.length === 0) {
+                listBody.innerHTML += '<tr><td colspan="3" style="text-align: center; font-style: italic;">Файлы не найдены</td></tr>';
+                return;
+            }
+            data.files.forEach(file => {
                 const tr = document.createElement('tr');
                 const escapedName = file.name.replace(/&/g, "&amp;").replace(/</g, "<").replace(/>/g, ">").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
-                tr.innerHTML = `<td title="${escapedName}">${escapedName}</td><td>${file.size}</td><td>${file.modified}</td>`;
+                if (file.is_dir) {
+                    tr.innerHTML = `<td title="${escapedName}" style="cursor:pointer">${escapedName}</td><td>-</td><td>${file.modified}</td>`;
+                    tr.querySelector('td').onclick = () => {
+                        currentFilesPath = currentFilesPath ? `${currentFilesPath}/${file.name}` : file.name;
+                        loadFilesList();
+                    };
+                } else {
+                    tr.innerHTML = `<td title="${escapedName}">${escapedName}</td><td>${file.size}</td><td>${file.modified}</td>`;
+                }
                 listBody.appendChild(tr);
             });
         } catch (e) {
             console.error("Ошибка при загрузке списка файлов:", e);
             listBody.innerHTML = `<tr><td colspan="3" style="color:var(--danger);">Ошибка загрузки: ${e.message}</td></tr>`;
         }
+    }
+    document.getElementById('manage-files').onclick = () => {
+        currentFilesPath = '';
+        openModal(document.getElementById('files-modal'));
+        loadFilesList();
     };
     document.getElementById('add-dhcp-host').onclick = () => {
       const mac = prompt('MAC:');

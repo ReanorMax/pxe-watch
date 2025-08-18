@@ -32,42 +32,46 @@ def write_file(path: str, content: str) -> None:
 
 
 def list_files_in_dir(directory: str):
-    """Return JSON list of files in directory with size and mtime."""
-    try:
-        os.makedirs(directory, exist_ok=True)
-        file_list = []
-        for f in os.listdir(directory):
-            file_path = os.path.join(directory, f)
-            try:
-                stat_info = os.stat(file_path)
-            except OSError as e:
-                logging.warning(
-                    f"Не удалось получить информацию о файле {file_path}: {e}"
-                )
-                continue
+    """Return list of files in directory with size, mtime and type."""
+    os.makedirs(directory, exist_ok=True)
+    file_list = []
+    for f in os.listdir(directory):
+        file_path = os.path.join(directory, f)
+        try:
+            stat_info = os.stat(file_path)
+        except OSError as e:
+            logging.warning(
+                f"Не удалось получить информацию о файле {file_path}: {e}"
+            )
+            continue
 
-            size_str = "-"
-            if os.path.isfile(file_path):
-                size_bytes = stat_info.st_size
-                if size_bytes < 1024:
-                    size_str = f"{size_bytes} B"
-                elif size_bytes < 1024 ** 2:
-                    size_str = f"{size_bytes / 1024:.1f} KB"
-                elif size_bytes < 1024 ** 3:
-                    size_str = f"{size_bytes / (1024 ** 2):.1f} MB"
-                else:
-                    size_str = f"{size_bytes / (1024 ** 3):.1f} GB"
+        is_dir = os.path.isdir(file_path)
+        size_str = "-"
+        if not is_dir:
+            size_bytes = stat_info.st_size
+            if size_bytes < 1024:
+                size_str = f"{size_bytes} B"
+            elif size_bytes < 1024 ** 2:
+                size_str = f"{size_bytes / 1024:.1f} KB"
+            elif size_bytes < 1024 ** 3:
+                size_str = f"{size_bytes / (1024 ** 2):.1f} MB"
+            else:
+                size_str = f"{size_bytes / (1024 ** 3):.1f} GB"
 
-            modified_str = datetime.datetime.fromtimestamp(
-                stat_info.st_mtime
-            ).strftime('%d.%m.%Y %H:%M')
-            file_list.append({'name': f, 'size': size_str, 'modified': modified_str})
+        modified_str = datetime.datetime.fromtimestamp(
+            stat_info.st_mtime
+        ).strftime('%d.%m.%Y %H:%M')
+        file_list.append(
+            {
+                'name': f,
+                'size': size_str,
+                'modified': modified_str,
+                'is_dir': is_dir,
+            }
+        )
 
-        file_list.sort(key=lambda x: x['name'].lower())
-        return jsonify(file_list)
-    except Exception as e:
-        logging.error(f"Ошибка при получении списка файлов из {directory}: {e}")
-        return jsonify({'error': str(e)}), 500
+    file_list.sort(key=lambda x: (not x['is_dir'], x['name'].lower()))
+    return file_list
 
 
 def set_playbook_status(ip: str, status: str) -> None:
