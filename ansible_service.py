@@ -10,12 +10,12 @@ import configparser
 from flask import Flask, render_template, request, jsonify
 from flask_socketio import SocketIO
 from config import (
-    PRESEED_PATH,
     ONLINE_TIMEOUT,
     LOCAL_OFFSET,
     ANSIBLE_PLAYBOOK,
     ANSIBLE_INVENTORY,
 )
+from services.preseed import get_preseed_path
 from services.registration import register_host
 from db_utils import get_db
 
@@ -180,7 +180,7 @@ def dashboard():
             'last': dt_last.strftime('%H:%M:%S'),
             'online': online,
             'details': details or '',
-            'preseed_path': PRESEED_PATH
+            'preseed_path': get_preseed_path()
         })
     return render_template('dashboard.html', hosts=hosts)
 

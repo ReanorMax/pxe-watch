@@ -120,7 +120,6 @@
       }
     }
     [
-      { btn: 'edit-preseed', modal: 'preseed-modal', api: '/api/preseed', elem: 'preseed-content' },
       { btn: 'edit-ipxe', modal: 'ipxe-modal', api: '/api/ipxe', elem: 'ipxe-content' },
       { btn: 'edit-dnsmasq', modal: 'dnsmasq-modal', api: '/api/dnsmasq', elem: 'dnsmasq-content' },
       { btn: 'edit-inventory', modal: 'inventory-modal', api: '/api/ansible/inventory', elem: 'inventory-content' },
@@ -145,17 +144,67 @@
         saveContentToApi(apiPath, contentId, onSuccess, isPlaybook);
       };
     }
-    setupSaveButton('save-preseed', '/api/preseed', 'preseed-content', () => closeModal(document.getElementById('preseed-modal')));
     setupSaveButton('save-ipxe', '/api/ipxe', 'ipxe-content', () => closeModal(document.getElementById('ipxe-modal')));
     setupSaveButton('save-dnsmasq', '/api/dnsmasq', 'dnsmasq-content', () => closeModal(document.getElementById('dnsmasq-modal')));
     setupSaveButton('save-playbook', '/api/ansible/playbook', null, () => closeModal(document.getElementById('playbook-modal')), true);
     setupSaveButton('save-inventory', '/api/ansible/inventory', 'inventory-content', () => closeModal(document.getElementById('inventory-modal')));
-    function generatePartitionPreseed(count, size) {
+    let currentPreseedFile = 1;
+    async function loadPreseed() {
+      const res = await fetch(`/api/preseed?file=${currentPreseedFile}`);
+      if (!res.ok) throw new Error();
+      document.getElementById('preseed-content').value = await res.text();
+    }
+    const editPreseedBtn = document.getElementById('edit-preseed');
+    if (editPreseedBtn) {
+      editPreseedBtn.onclick = async () => {
+        try {
+          const res = await fetch('/api/preseed/active');
+          const data = await res.json();
+          currentPreseedFile = data.active || 1;
+          document.getElementById('preseed-file-select').value = String(currentPreseedFile);
+          await loadPreseed();
+          openModal(document.getElementById('preseed-modal'));
+        } catch (e) {
+          alert(`Ошибка загрузки: ${e.message}`);
+        }
+      };
+      document.getElementById('preseed-file-select').onchange = async e => {
+        currentPreseedFile = parseInt(e.target.value, 10);
+        try { await loadPreseed(); } catch (err) { alert(`Ошибка загрузки: ${err.message}`); }
+      };
+      document.getElementById('activate-preseed').onclick = async () => {
+        try {
+          const res = await fetch('/api/preseed/active', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ active: currentPreseedFile }) });
+          if (!res.ok) throw new Error((await res.json()).msg);
+          alert('Активный preseed обновлён');
+        } catch (err) {
+          alert('Ошибка: ' + err.message);
+        }
+      };
+      document.getElementById('save-preseed').onclick = () => {
+        saveContentToApi(`/api/preseed?file=${currentPreseedFile}`, 'preseed-content', () => closeModal(document.getElementById('preseed-modal')));
+      };
+      const togglePartitionBtn = document.getElementById('toggle-partition-config');
+      const partitionConfig = document.querySelector('.partition-config');
+      if (togglePartitionBtn && partitionConfig) {
+        togglePartitionBtn.onclick = () => {
+          if (partitionConfig.style.display === 'none') {
+            partitionConfig.style.display = 'flex';
+            togglePartitionBtn.innerHTML = '<i class="fa fa-eye-slash"></i> Скрыть конфигуратор';
+          } else {
+            partitionConfig.style.display = 'none';
+            togglePartitionBtn.innerHTML = '<i class="fa fa-eye"></i> Показать конфигуратор';
+          }
+        };
+      }
+    }
+    function generatePartitionPreseed(count, size, hotspare) {
       const lines = [];
       const bootMB = 512;
       const swapMB = Math.min(4096, Math.round(size * 1024 * 0.1));
       const rootMB = Math.max(1, Math.round(size * 1024) - bootMB - swapMB);
-      for (let i = 0; i < count; i++) {
+      const limit = hotspare && count > 0 ? count - 1 : count;
+      for (let i = 0; i < limit; i++) {
         const diskLetter = String.fromCharCode('a'.charCodeAt(0) + i);
         lines.push(`# /dev/sd${diskLetter}`);
         lines.push(`d-i partman-auto/disk string /dev/sd${diskLetter}`);
@@ -178,6 +227,10 @@
         lines.push('d-i partman/confirm_nooverwrite boolean true');
         lines.push('');
       }
+      if (hotspare && count > 0) {
+        const diskLetter = String.fromCharCode('a'.charCodeAt(0) + count - 1);
+        lines.push(`# /dev/sd${diskLetter} hotspare`);
+      }
       return lines.join('\n');
     }
     const generateBtn = document.getElementById('generate-preseed');
@@ -185,7 +238,8 @@
       generateBtn.onclick = () => {
         const count = parseInt(document.getElementById('disk-count').value, 10) || 1;
         const size = parseInt(document.getElementById('disk-size').value, 10) || 0;
-        document.getElementById('preseed-content').value = generatePartitionPreseed(count, size);
+        const hotspare = document.getElementById('disk-hotspare').checked;
+        document.getElementById('preseed-content').value = generatePartitionPreseed(count, size, hotspare);
       };
     }
     let currentFilesPath = '';
