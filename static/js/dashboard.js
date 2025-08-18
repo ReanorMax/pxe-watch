@@ -272,18 +272,3 @@
       }
     });
     overlay.onclick = () => modals.forEach(closeModal);
-
-    document.getElementById('run-ansible').onclick = async () => {
-      if (!confirm('Запустить Ansible на всех хостах?')) return;
-      try {
-        const res = await fetch('/api/semaphore/trigger', { method: 'POST' });
-        const data = await res.json();
-        if (res.ok) {
-          alert(`Ansible запущен! Task ID: ${data.task_id}`);
-        } else {
-          alert('Ошибка: ' + (data.msg || 'Неизвестная ошибка'));
-        }
-      } catch (e) {
-        alert('Ошибка: ' + e.message);
-      }
-    };
