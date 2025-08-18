@@ -14,20 +14,20 @@ import configparser
 from flask import Flask, render_template, request, jsonify, abort
 from flask_socketio import SocketIO, emit
 import requests
-
-# ==== Конфигурация ====
-DB_PATH = os.getenv('DB_PATH', '/opt/pxewatch/pxe.db')
-PRESEED_PATH = os.getenv('PRESEED_PATH', '/var/www/html/debian12/preseed.cfg')
-DNSMASQ_PATH = '/etc/dnsmasq.conf'
-BOOT_IPXE_PATH = '/srv/tftp/boot.ipxe'
-AUTOEXEC_IPXE_PATH = '/srv/tftp/autoexec.ipxe'
-LOGS_DIR = os.getenv('LOGS_DIR', '/var/log/installer')
-ONLINE_TIMEOUT = int(os.getenv('ONLINE_TIMEOUT', 300))
-LOCAL_OFFSET = datetime.timedelta(hours=int(os.getenv('LOCAL_OFFSET', 3)))
-ANSIBLE_PLAYBOOK = '/root/ansible/playbook.yml'
-ANSIBLE_INVENTORY = '/root/ansible/inventory.ini'
-ANSIBLE_FILES_DIR = '/root/ansible/files'
-ANSIBLE_TEMPLATES_DIR = '/root/ansible/templates'
+from config import (
+    DB_PATH,
+    PRESEED_PATH,
+    DNSMASQ_PATH,
+    BOOT_IPXE_PATH,
+    AUTOEXEC_IPXE_PATH,
+    LOGS_DIR,
+    ONLINE_TIMEOUT,
+    LOCAL_OFFSET,
+    ANSIBLE_PLAYBOOK,
+    ANSIBLE_INVENTORY,
+    ANSIBLE_FILES_DIR,
+    ANSIBLE_TEMPLATES_DIR,
+)
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 app = Flask(__name__)

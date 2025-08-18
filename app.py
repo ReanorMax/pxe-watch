@@ -31,21 +31,20 @@ from flask import Flask, render_template, request, jsonify, abort
 
 # Blueprint с функциями просмотра журналов
 from logtail import logtail_bp
-
-# ==== Конфигурация ====
-# Пути к основным файлам и настройкам приложения
-DB_PATH = os.getenv('DB_PATH', '/opt/pxewatch/pxe.db')
-PRESEED_PATH = os.getenv('PRESEED_PATH', '/var/www/html/debian12/preseed.cfg')
-DNSMASQ_PATH = '/etc/dnsmasq.conf'
-BOOT_IPXE_PATH = '/srv/tftp/boot.ipxe'
-AUTOEXEC_IPXE_PATH = '/srv/tftp/autoexec.ipxe'
-LOGS_DIR = os.getenv('LOGS_DIR', '/var/log/installer')
-ONLINE_TIMEOUT = int(os.getenv('ONLINE_TIMEOUT', 300))  # Таймаут для определения онлайн-статуса в секундах
-LOCAL_OFFSET = datetime.timedelta(hours=int(os.getenv('LOCAL_OFFSET', 3)))  # Смещение часового пояса
-ANSIBLE_PLAYBOOK = '/root/ansible/playbook.yml'
-ANSIBLE_INVENTORY = '/root/ansible/inventory.ini'
-ANSIBLE_FILES_DIR = '/home/ansible-offline/files'
-ANSIBLE_TEMPLATES_DIR = '/root/ansible/templates'
+from config import (
+    DB_PATH,
+    PRESEED_PATH,
+    DNSMASQ_PATH,
+    BOOT_IPXE_PATH,
+    AUTOEXEC_IPXE_PATH,
+    LOGS_DIR,
+    ONLINE_TIMEOUT,
+    LOCAL_OFFSET,
+    ANSIBLE_PLAYBOOK,
+    ANSIBLE_INVENTORY,
+    ANSIBLE_FILES_DIR,
+    ANSIBLE_TEMPLATES_DIR,
+)
 
 # ==== Конфигурация SSH для перезагрузки/выключения ====
 # ВАЖНО: Использование shell=True и форматирования строки может быть небезопасно.
