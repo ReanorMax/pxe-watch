@@ -4,7 +4,6 @@ import subprocess
 import datetime
 import re
 import json
-import requests
 from flask import jsonify, abort, request
 
 from config import (
@@ -12,10 +11,6 @@ from config import (
     SSH_USER,
     SSH_OPTIONS,
     ANSIBLE_SERVICE_NAME,
-    SEMAPHORE_API,
-    SEMAPHORE_TOKEN,
-    SEMAPHORE_PROJECT_ID,
-    SEMAPHORE_TEMPLATE_ID,
 )
 from db_utils import get_db
 
@@ -38,14 +33,18 @@ def write_file(path: str, content: str) -> None:
 
 
 def list_files_in_dir(directory: str):
-    """Return JSON list of files in directory with size and mtime."""
+    """Return JSON list of files and directories in directory with size and mtime."""
     try:
-        os.makedirs(directory, exist_ok=True)
-        file_list = []
-        for f in os.listdir(directory):
-            file_path = os.path.join(directory, f)
-            if os.path.isfile(file_path):
-                stat_info = os.stat(file_path)
+        if not os.path.isdir(directory):
+            return jsonify({'error': 'Directory not found'}), 404
+        items = []
+        for name in os.listdir(directory):
+            file_path = os.path.join(directory, name)
+            stat_info = os.stat(file_path)
+            modified_str = datetime.datetime.fromtimestamp(stat_info.st_mtime).strftime('%d.%m.%Y %H:%M')
+            if os.path.isdir(file_path):
+                items.append({'name': f'{name}/', 'size': '—', 'modified': modified_str})
+            elif os.path.isfile(file_path):
                 size_bytes = stat_info.st_size
                 if size_bytes < 1024:
                     size_str = f"{size_bytes} B"
@@ -55,13 +54,9 @@ def list_files_in_dir(directory: str):
                     size_str = f"{size_bytes / (1024 ** 2):.1f} MB"
                 else:
                     size_str = f"{size_bytes / (1024 ** 3):.1f} GB"
-                modified_timestamp = stat_info.st_mtime
-                modified_str = datetime.datetime.fromtimestamp(
-                    modified_timestamp
-                ).strftime('%d.%m.%Y %H:%M')
-                file_list.append({'name': f, 'size': size_str, 'modified': modified_str})
-        file_list.sort(key=lambda x: x['name'].lower())
-        return jsonify(file_list)
+                items.append({'name': name, 'size': size_str, 'modified': modified_str})
+        items.sort(key=lambda x: x['name'].lower())
+        return jsonify(items)
     except Exception as e:
         logging.error(f"Ошибка при получении списка файлов из {directory}: {e}")
         return jsonify({'error': str(e)}), 500
@@ -156,23 +151,3 @@ def create_file_api_handlers(file_path_getter, allow_missing_get: bool = False, 
     return get_handler, post_handler
 
 
-def trigger_semaphore_playbook():
-    """Trigger playbook execution via Semaphore API."""
-    try:
-        url = f'{SEMAPHORE_API}/project/{SEMAPHORE_PROJECT_ID}/tasks'
-        headers = {
-            'Authorization': f'Bearer {SEMAPHORE_TOKEN}',
-            'Content-Type': 'application/json',
-        }
-        payload = {'template_id': SEMAPHORE_TEMPLATE_ID}
-        res = requests.post(url, json=payload, headers=headers, timeout=10)
-        if 200 <= res.status_code < 300:
-            task = res.json()
-            logging.info(
-                f"Ansible запущен через API: task_id={task['id']}"
-            )
-            return {'status': 'ok', 'task_id': task['id']}
-        return {'status': 'error', 'msg': f"HTTP {res.status_code}: {res.text}"}
-    except Exception as e:
-        logging.error(f"Ошибка запуска Ansible через API: {e}")
-        return {'status': 'error', 'msg': str(e)}

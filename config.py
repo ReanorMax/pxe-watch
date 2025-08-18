@@ -23,7 +23,3 @@ SSH_OPTIONS = os.getenv(
     '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
 )
 ANSIBLE_SERVICE_NAME = os.getenv('ANSIBLE_SERVICE_NAME', 'ansible-api.service')
-SEMAPHORE_API = os.getenv('SEMAPHORE_API', 'http://10.19.1.90:3000/api')
-SEMAPHORE_TOKEN = os.getenv('SEMAPHORE_TOKEN', '')
-SEMAPHORE_PROJECT_ID = int(os.getenv('SEMAPHORE_PROJECT_ID', 1))
-SEMAPHORE_TEMPLATE_ID = int(os.getenv('SEMAPHORE_TEMPLATE_ID', 1))
