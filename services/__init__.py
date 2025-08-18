@@ -38,8 +38,16 @@ def list_files_in_dir(directory: str):
         file_list = []
         for f in os.listdir(directory):
             file_path = os.path.join(directory, f)
-            if os.path.isfile(file_path):
+            try:
                 stat_info = os.stat(file_path)
+            except OSError as e:
+                logging.warning(
+                    f"Не удалось получить информацию о файле {file_path}: {e}"
+                )
+                continue
+
+            size_str = "-"
+            if os.path.isfile(file_path):
                 size_bytes = stat_info.st_size
                 if size_bytes < 1024:
                     size_str = f"{size_bytes} B"
@@ -49,11 +57,12 @@ def list_files_in_dir(directory: str):
                     size_str = f"{size_bytes / (1024 ** 2):.1f} MB"
                 else:
                     size_str = f"{size_bytes / (1024 ** 3):.1f} GB"
-                modified_timestamp = stat_info.st_mtime
-                modified_str = datetime.datetime.fromtimestamp(
-                    modified_timestamp
-                ).strftime('%d.%m.%Y %H:%M')
-                file_list.append({'name': f, 'size': size_str, 'modified': modified_str})
+
+            modified_str = datetime.datetime.fromtimestamp(
+                stat_info.st_mtime
+            ).strftime('%d.%m.%Y %H:%M')
+            file_list.append({'name': f, 'size': size_str, 'modified': modified_str})
+
         file_list.sort(key=lambda x: x['name'].lower())
         return jsonify(file_list)
     except Exception as e:
