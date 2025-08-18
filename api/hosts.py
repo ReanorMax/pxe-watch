@@ -2,7 +2,13 @@ from flask import request, jsonify
 import subprocess
 import logging
 
-from config import SSH_PASSWORD, SSH_USER, SSH_OPTIONS
+from config import (
+    SSH_PASSWORD,
+    SSH_USER,
+    SSH_OPTIONS,
+    ANSIBLE_PLAYBOOK,
+    ANSIBLE_INVENTORY,
+)
 from . import api_bp
 from services.registration import register_host
 
@@ -20,6 +26,16 @@ def api_register():
     except Exception as e:
         logging.error(f'Ошибка при регистрации хоста: {e}')
         return 'Error', 500
+    try:
+        subprocess.Popen([
+            "ansible-playbook",
+            ANSIBLE_PLAYBOOK,
+            "-i",
+            ANSIBLE_INVENTORY,
+        ])
+        logging.info(f'Ansible-playbook запущен для MAC {mac}')
+    except Exception as e:
+        logging.error(f'Ошибка запуска playbook: {e}')
     return 'OK', 200
 
 
