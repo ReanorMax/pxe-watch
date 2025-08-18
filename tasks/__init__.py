@@ -103,30 +103,7 @@ def parse_ansible_logs():
                 f"Ошибка в фоновой задаче парсинга логов Ansible: {e}",
                 exc_info=True,
             )
-
-
-def check_ansible_marks_background():
-    """Background task checking ansible_mark.json presence."""
-    while True:
-        time.sleep(120)
-        logging.info("Начинаем проверку статусов Ansible через mark.json...")
-        try:
-            with get_db() as db:
-                rows = db.execute(
-                    "SELECT DISTINCT ip FROM hosts WHERE ip != '—' AND ip IS NOT NULL"
-                ).fetchall()
-                ips = [row[0] for row in rows]
-            for ip in ips:
-                logging.info(f"Проверяем статус Ansible для {ip}")
-        except Exception as e:
-            logging.error(
-                f"Ошибка в фоновой задаче проверки статусов Ansible: {e}",
-                exc_info=True,
-            )
-
-
 def start_background_tasks() -> None:
     """Start all background threads."""
     threading.Thread(target=ping_hosts_background, daemon=True).start()
     threading.Thread(target=parse_ansible_logs, daemon=True).start()
-    threading.Thread(target=check_ansible_marks_background, daemon=True).start()

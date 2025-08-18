@@ -27,16 +27,11 @@ from services import (
     list_files_in_dir,
     get_ansible_mark,
     create_file_api_handlers,
-    get_semaphore_status,
     trigger_semaphore_playbook,
 )
 from services.registration import register_host
 
 api_bp = Blueprint('api', __name__, url_prefix='/api')
-
-@api_bp.route('/semaphore/status', methods=['GET'])
-def api_semaphore_status():
-    return jsonify(get_semaphore_status())
 
 @api_bp.route('/semaphore/trigger', methods=['POST'])
 def api_semaphore_trigger():

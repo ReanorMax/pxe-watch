@@ -168,14 +168,3 @@
     .header-group { display: flex; gap: 8px; align-items: center; }
     .divider { width: 1px; height: 24px; background: var(--divider); margin: 0 12px; }
     .actions-cell { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
-    .semaphore-status {
-      font-size: 0.85em;
-      opacity: 0.9;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      margin-top: 4px;
-    }
-    .semaphore-status i {
-      font-size: 0.9em;
-    }

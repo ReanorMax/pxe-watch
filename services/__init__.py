@@ -156,59 +156,6 @@ def create_file_api_handlers(file_path_getter, allow_missing_get: bool = False, 
     return get_handler, post_handler
 
 
-def get_semaphore_status():
-    """Return status of last Semaphore task."""
-    try:
-        url = f'{SEMAPHORE_API}/project/{SEMAPHORE_PROJECT_ID}/templates'
-        headers = {'Authorization': f'Bearer {SEMAPHORE_TOKEN}'}
-        res = requests.get(url, headers=headers, timeout=10)
-        if res.status_code != 200:
-            return {'status': 'error', 'msg': f'API ошибка {res.status_code}'}
-
-        templates = res.json()
-        template = next((t for t in templates if t['id'] == SEMAPHORE_TEMPLATE_ID), None)
-        if not template or 'last_task' not in template:
-            return {'status': 'unknown', 'msg': 'Нет данных'}
-
-        task = template['last_task']
-        created = datetime.datetime.fromisoformat(
-            task['created'].replace('Z', '+00:00')
-        )
-        local_time = created.astimezone(
-            datetime.datetime.now().astimezone().tzinfo
-        )
-        formatted_time = local_time.strftime('%d.%m.%Y %H:%M')
-
-        status_map = {
-            'success': 'ok',
-            'failed': 'failed',
-            'running': 'running',
-            'waiting': 'pending',
-            'canceled': 'failed',
-        }
-        display_status = task['status']
-        icon = (
-            '✅'
-            if task['status'] == 'success'
-            else '🔴'
-            if task['status'] in ('failed', 'canceled')
-            else '🔄'
-            if task['status'] in ('running', 'waiting')
-            else '🟡'
-        )
-        return {
-            'status': status_map.get(task['status'], 'unknown'),
-            'display_status': display_status,
-            'time': formatted_time,
-            'commit_message': task.get('commit_message', ''),
-            'task_id': task.get('id'),
-            'icon': icon,
-        }
-    except Exception as e:
-        logging.error(f"Ошибка получения статуса из Semaphore: {e}")
-        return {'status': 'error', 'msg': str(e)}
-
-
 def trigger_semaphore_playbook():
     """Trigger playbook execution via Semaphore API."""
     try:
