@@ -150,6 +150,72 @@
     setupSaveButton('save-dnsmasq', '/api/dnsmasq', 'dnsmasq-content', () => closeModal(document.getElementById('dnsmasq-modal')));
     setupSaveButton('save-playbook', '/api/ansible/playbook', null, () => closeModal(document.getElementById('playbook-modal')), true);
     setupSaveButton('save-inventory', '/api/ansible/inventory', 'inventory-content', () => closeModal(document.getElementById('inventory-modal')));
+    const partConfig = document.getElementById('partition-config');
+    const toggleConfig = document.getElementById('toggle-partition-config');
+    if (toggleConfig && partConfig) {
+      toggleConfig.onclick = () => {
+        const hidden = partConfig.style.display === 'none';
+        partConfig.style.display = hidden ? 'flex' : 'none';
+        toggleConfig.title = hidden ? 'Скрыть конфигуратор' : 'Показать конфигуратор';
+      };
+    }
+    function generatePartitionPreseed(count, size) {
+      const lines = [];
+      const bootMB = 512;
+      const swapMB = Math.min(4096, Math.round(size * 1024 * 0.1));
+      const rootMB = Math.max(1, Math.round(size * 1024) - bootMB - swapMB);
+      for (let i = 0; i < count; i++) {
+        const diskLetter = String.fromCharCode('a'.charCodeAt(0) + i);
+        lines.push(`# /dev/sd${diskLetter}`);
+        lines.push(`d-i partman-auto/disk string /dev/sd${diskLetter}`);
+        lines.push('d-i partman-auto/method string regular');
+        lines.push('d-i partman-auto/choose_recipe select custom');
+        lines.push(`d-i partman-auto/expert_recipe string \\
+      custom :: \\
+              ${bootMB} ${bootMB} ${bootMB} ext4 \\
+                      $primary{ } $bootable{ } method{ format } format{ } \\
+                      use_filesystem{ } filesystem{ ext4 } mountpoint{ /boot } \\
+              . \\
+              ${swapMB} ${swapMB} ${swapMB} linux-swap \\
+                      method{ swap } format{ } \\
+              . \\
+              ${rootMB} ${rootMB} ${rootMB} ext4 \\
+                      method{ format } format{ } \\
+                      use_filesystem{ } filesystem{ ext4 } mountpoint{ / } \\
+              .`);
+        lines.push('d-i partman/confirm boolean true');
+        lines.push('d-i partman/confirm_nooverwrite boolean true');
+        lines.push('');
+      }
+      return lines.join('\n');
+    }
+    function insertPartitionSnippet(content, snippet) {
+      const start = '# <AUTOPART>';
+      const end = '# </AUTOPART>';
+      if (content.includes(start) && content.includes(end)) {
+        const regex = new RegExp(`${start}[\s\S]*?${end}`);
+        return content.replace(regex, `${start}\n${snippet}\n${end}`);
+      }
+      return `${content.trim()}\n\n${start}\n${snippet}\n${end}\n`;
+    }
+    const generateBtn = document.getElementById('generate-preseed');
+    if (generateBtn) {
+      generateBtn.onclick = () => {
+        const count = parseInt(document.getElementById('disk-count').value, 10);
+        const size = parseInt(document.getElementById('disk-size').value, 10);
+        if (!count || count < 1 || count > 26) {
+          alert('Некорректное количество дисков');
+          return;
+        }
+        if (!size || size <= 0) {
+          alert('Некорректный размер диска');
+          return;
+        }
+        const snippet = generatePartitionPreseed(count, size);
+        const textarea = document.getElementById('preseed-content');
+        textarea.value = insertPartitionSnippet(textarea.value, snippet);
+      };
+    }
     let currentFilesPath = '';
     const baseFilesPath = document.getElementById('files-modal-title').textContent.replace(/^Файлы\s*/, '');
     async function loadFilesList() {
