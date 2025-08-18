@@ -15,14 +15,7 @@ from services import (
     list_files_in_dir,
     get_ansible_mark,
     create_file_api_handlers,
-    trigger_semaphore_playbook,
 )
-
-
-@api_bp.route('/semaphore/trigger', methods=['POST'])
-def api_semaphore_trigger():
-    result = trigger_semaphore_playbook()
-    return jsonify(result), 200 if result['status'] == 'ok' else 500
 
 
 playbook_get, playbook_post = create_file_api_handlers(
@@ -111,17 +104,17 @@ def api_logs_ansible():
             line = line.replace('POST', '<span style="color:#9775fa; font-weight:bold">POST</span>')
             line = re.sub(
                 r'([0-9a-fA-F]{2}(:[0-9a-fA-F]{2}){5})',
-                r'<span style="color:#0ca678; font-weight:bold; font-family:monospace">\\1</span>',
+                r'<span style="color:#0ca678; font-weight:bold; font-family:monospace">\1</span>',
                 line,
             )
             line = re.sub(
                 r'\b(?:\d{1,3}\.){3}\d{1,3}\b',
-                r'<span style="color:#087f5b; font-weight:bold; font-family:monospace">\\g<0></span>',
+                r'<span style="color:#087f5b; font-weight:bold; font-family:monospace">\g<0></span>',
                 line,
             )
             line = re.sub(
                 r'(\w{3} \d{1,2} \d{2}:\d{2}:\d{2})',
-                r'<span style="color:#adb5bd">\\1</span>',
+                r'<span style="color:#adb5bd">\1</span>',
                 line,
             )
             colored_lines.append(line)

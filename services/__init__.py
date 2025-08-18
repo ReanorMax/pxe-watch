@@ -4,18 +4,12 @@ import subprocess
 import datetime
 import re
 import json
-import requests
 from flask import jsonify, abort, request
 
 from config import (
     SSH_PASSWORD,
     SSH_USER,
     SSH_OPTIONS,
-    ANSIBLE_SERVICE_NAME,
-    SEMAPHORE_API,
-    SEMAPHORE_TOKEN,
-    SEMAPHORE_PROJECT_ID,
-    SEMAPHORE_TEMPLATE_ID,
 )
 from db_utils import get_db
 
@@ -154,25 +148,3 @@ def create_file_api_handlers(file_path_getter, allow_missing_get: bool = False, 
     get_handler.__name__ = f"{name_prefix}_get_handler"
     post_handler.__name__ = f"{name_prefix}_post_handler"
     return get_handler, post_handler
-
-
-def trigger_semaphore_playbook():
-    """Trigger playbook execution via Semaphore API."""
-    try:
-        url = f'{SEMAPHORE_API}/project/{SEMAPHORE_PROJECT_ID}/tasks'
-        headers = {
-            'Authorization': f'Bearer {SEMAPHORE_TOKEN}',
-            'Content-Type': 'application/json',
-        }
-        payload = {'template_id': SEMAPHORE_TEMPLATE_ID}
-        res = requests.post(url, json=payload, headers=headers, timeout=10)
-        if 200 <= res.status_code < 300:
-            task = res.json()
-            logging.info(
-                f"Ansible запущен через API: task_id={task['id']}"
-            )
-            return {'status': 'ok', 'task_id': task['id']}
-        return {'status': 'error', 'msg': f"HTTP {res.status_code}: {res.text}"}
-    except Exception as e:
-        logging.error(f"Ошибка запуска Ansible через API: {e}")
-        return {'status': 'error', 'msg': str(e)}
