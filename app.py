@@ -1,3 +1,5 @@
+import os
+import subprocess
 import logging
 from flask import Flask
 
@@ -21,6 +23,18 @@ def create_app() -> Flask:
 
 
 app = create_app()
+
+def start_ansible_service() -> None:
+    """Start auxiliary ansible_service in background."""
+    service_path = os.path.join(os.path.dirname(__file__), 'ansible_service.py')
+    try:
+        subprocess.Popen(['python3', service_path])
+        logging.info('Ansible service started')
+    except Exception as e:
+        logging.error(f'Failed to start ansible service: {e}')
+
+
 if __name__ == '__main__':
     start_background_tasks()
+    start_ansible_service()
     app.run(host='0.0.0.0', port=5000)
