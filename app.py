@@ -31,40 +31,28 @@ from flask import Flask, render_template, request, jsonify, abort
 
 # Blueprint с функциями просмотра журналов
 from logtail import logtail_bp
-
-# ==== Конфигурация ====
-# Пути к основным файлам и настройкам приложения
-DB_PATH = os.getenv('DB_PATH', '/opt/pxewatch/pxe.db')
-PRESEED_PATH = os.getenv('PRESEED_PATH', '/var/www/html/debian12/preseed.cfg')
-DNSMASQ_PATH = '/etc/dnsmasq.conf'
-BOOT_IPXE_PATH = '/srv/tftp/boot.ipxe'
-AUTOEXEC_IPXE_PATH = '/srv/tftp/autoexec.ipxe'
-LOGS_DIR = os.getenv('LOGS_DIR', '/var/log/installer')
-ONLINE_TIMEOUT = int(os.getenv('ONLINE_TIMEOUT', 300))  # Таймаут для определения онлайн-статуса в секундах
-LOCAL_OFFSET = datetime.timedelta(hours=int(os.getenv('LOCAL_OFFSET', 3)))  # Смещение часового пояса
-ANSIBLE_PLAYBOOK = '/root/ansible/playbook.yml'
-ANSIBLE_INVENTORY = '/root/ansible/inventory.ini'
-ANSIBLE_FILES_DIR = '/home/ansible-offline/files'
-ANSIBLE_TEMPLATES_DIR = '/root/ansible/templates'
-
-# ==== Конфигурация SSH для перезагрузки/выключения ====
-# ВАЖНО: Использование shell=True и форматирования строки может быть небезопасно.
-# Убедитесь, что SSH_PASSWORD и SSH_USER надёжны и не доступны третьим лицам.
-SSH_PASSWORD = os.getenv('SSH_PASSWORD', 'Q1w2a3s40007')
-SSH_USER = os.getenv('SSH_USER', 'root')
-SSH_OPTIONS = '-o StrictHostKeyChecking=no'
-
-# ==== Конфигурация Ansible Run ====
-# Предполагается, что плейбук запускается отдельно, например, через systemd сервис ansible-api.service
-# Этот скрипт будет обновлять статус в БД, основываясь на логах этого сервиса.
-# Альтернативно, можно добавить API-эндпоинт для ручного запуска и обновления статуса.
-ANSIBLE_SERVICE_NAME = 'ansible-api.service'
-
-# ==== Конфигурация Semaphore API ====
-SEMAPHORE_API = 'http://10.19.1.90:3000/api'
-SEMAPHORE_TOKEN = 'pkoqhsremgn9s_4d1qdrzf9lgxzmn8e9nwtjjillvss='
-SEMAPHORE_PROJECT_ID = 1
-SEMAPHORE_TEMPLATE_ID = 1
+from config import (
+    DB_PATH,
+    PRESEED_PATH,
+    DNSMASQ_PATH,
+    BOOT_IPXE_PATH,
+    AUTOEXEC_IPXE_PATH,
+    LOGS_DIR,
+    ONLINE_TIMEOUT,
+    LOCAL_OFFSET,
+    ANSIBLE_PLAYBOOK,
+    ANSIBLE_INVENTORY,
+    ANSIBLE_FILES_DIR,
+    ANSIBLE_TEMPLATES_DIR,
+    SSH_PASSWORD,
+    SSH_USER,
+    SSH_OPTIONS,
+    ANSIBLE_SERVICE_NAME,
+    SEMAPHORE_API,
+    SEMAPHORE_TOKEN,
+    SEMAPHORE_PROJECT_ID,
+    SEMAPHORE_TEMPLATE_ID,
+)
 
 # Настройка базового логирования
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')

@@ -22,11 +22,12 @@ from flask import (
     current_app,
     render_template,
 )
+from config import ANSIBLE_INVENTORY
 
 # ---------------------------------------------------------------------------
 # Константы и настройки
 # ---------------------------------------------------------------------------
-INI_FILE = "/root/ansible/inventory.ini"
+INI_FILE = ANSIBLE_INVENTORY
 DB_FILE = "logtail.sqlite"
 
 logtail_bp = Blueprint("logtail", __name__)

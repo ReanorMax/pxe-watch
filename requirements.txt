@@ -1,3 +1,4 @@
 flask
 requests
 flask-socketio
+python-dotenv
