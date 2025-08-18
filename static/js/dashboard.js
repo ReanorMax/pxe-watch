@@ -187,17 +187,25 @@
         const size = parseInt(document.getElementById('disk-size').value, 10) || 0;
         const textarea = document.getElementById('preseed-content');
         const snippet = generatePartitionPreseed(count, size);
-        let pos = textarea.selectionStart;
-        if (typeof pos !== 'number') {
-          pos = textarea.value.length;
+        const pattern = /# \/dev\/sd[a-z][\s\S]*?d-i partman\/confirm_nooverwrite boolean true\n?/;
+        if (pattern.test(textarea.value)) {
+          textarea.value = textarea.value.replace(pattern, snippet);
+          const cursorPos = textarea.value.indexOf(snippet) + snippet.length;
+          textarea.focus();
+          textarea.setSelectionRange(cursorPos, cursorPos);
+        } else {
+          let pos = textarea.selectionStart;
+          if (typeof pos !== 'number') {
+            pos = textarea.value.length;
+          }
+          const before = textarea.value.slice(0, pos);
+          const after = textarea.value.slice(pos);
+          const prefix = before && !before.endsWith('\n') ? '\n' : '';
+          textarea.value = before + prefix + snippet + after;
+          const cursorPos = (before + prefix + snippet).length;
+          textarea.focus();
+          textarea.setSelectionRange(cursorPos, cursorPos);
         }
-        const before = textarea.value.slice(0, pos);
-        const after = textarea.value.slice(pos);
-        const prefix = before && !before.endsWith('\n') ? '\n' : '';
-        textarea.value = before + prefix + snippet + after;
-        const cursorPos = (before + prefix + snippet).length;
-        textarea.focus();
-        textarea.setSelectionRange(cursorPos, cursorPos);
       };
     }
     let currentFilesPath = '';
