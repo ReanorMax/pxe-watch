@@ -16,7 +16,7 @@ ANSIBLE_PLAYBOOK = os.getenv('ANSIBLE_PLAYBOOK', '/root/ansible/playbook.yml')
 ANSIBLE_INVENTORY = os.getenv('ANSIBLE_INVENTORY', '/root/ansible/inventory.ini')
 ANSIBLE_FILES_DIR = os.getenv('ANSIBLE_FILES_DIR', '/home/ansible-offline/files')
 ANSIBLE_TEMPLATES_DIR = os.getenv('ANSIBLE_TEMPLATES_DIR', '/root/ansible/templates')
-SSH_PASSWORD = os.getenv('SSH_PASSWORD', 'Q1w2a3s40007')
+SSH_PASSWORD = os.getenv('SSH_PASSWORD', '')
 SSH_USER = os.getenv('SSH_USER', 'root')
 SSH_OPTIONS = os.getenv(
     'SSH_OPTIONS',
@@ -24,6 +24,6 @@ SSH_OPTIONS = os.getenv(
 )
 ANSIBLE_SERVICE_NAME = os.getenv('ANSIBLE_SERVICE_NAME', 'ansible-api.service')
 SEMAPHORE_API = os.getenv('SEMAPHORE_API', 'http://10.19.1.90:3000/api')
-SEMAPHORE_TOKEN = os.getenv('SEMAPHORE_TOKEN', 'pkoqhsremgn9s_4d1qdrzf9lgxzmn8e9nwtjjillvss=')
+SEMAPHORE_TOKEN = os.getenv('SEMAPHORE_TOKEN', '')
 SEMAPHORE_PROJECT_ID = int(os.getenv('SEMAPHORE_PROJECT_ID', 1))
 SEMAPHORE_TEMPLATE_ID = int(os.getenv('SEMAPHORE_TEMPLATE_ID', 1))
