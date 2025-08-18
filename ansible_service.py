@@ -7,21 +7,18 @@ import logging
 import subprocess
 import configparser
 
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, jsonify
 from flask_socketio import SocketIO
-from config import (
-    PRESEED_PATH,
-    ONLINE_TIMEOUT,
-    LOCAL_OFFSET,
-    ANSIBLE_PLAYBOOK,
-    ANSIBLE_INVENTORY,
-)
-from services.registration import register_host
+from config import ANSIBLE_PLAYBOOK, ANSIBLE_INVENTORY
+from api import api_bp
+from web import web_bp
 from db_utils import get_db
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
+app.register_blueprint(api_bp)
+app.register_blueprint(web_bp)
 
 def get_macs_from_inventory():
     try:
@@ -35,34 +32,6 @@ def get_macs_from_inventory():
         return macs
     except Exception:
         return []
-
-# ==== API: регистрация хоста ====
-@app.route('/api/register', methods=['GET', 'POST'])
-def api_register():
-    mac = request.values.get('mac', '').lower()
-    ip = request.values.get('ip', request.remote_addr)
-    stage = request.values.get('stage', 'unknown')
-    details = request.values.get('details', '')
-    try:
-        register_host(mac, ip, stage, details)
-    except ValueError:
-        return 'Missing MAC', 400
-    except Exception as e:
-        logging.error(f'Ошибка при регистрации хоста: {e}')
-        return 'Error', 500
-
-    try:
-        subprocess.Popen([
-            "ansible-playbook",
-            ANSIBLE_PLAYBOOK,
-            "-i",
-            ANSIBLE_INVENTORY
-        ])
-        logging.info(f'Ansible-playbook запущен для MAC {mac}')
-    except Exception as e:
-        logging.error(f'Ошибка запуска playbook: {e}')
-
-    return 'OK', 200
 
 # ==== API: Ansible ====
 @app.route('/api/ansible/task/<mac>')
@@ -83,6 +52,7 @@ def api_ansible_clients():
         ''').fetchall()
         return jsonify([dict(r) for r in rows])
 
+# Route specific to ansible_service: launch playbook and broadcast progress
 @app.route('/api/ansible/run', methods=['POST'])
 def api_ansible_run():
     try:
@@ -129,60 +99,6 @@ def api_ansible_run():
     except Exception as e:
         logging.error(f"Ошибка запуска ansible-playbook: {e}")
         return jsonify({'status': 'error', 'msg': str(e)}), 500
-
-# ==== API: логи ansible-api.service ====
-@app.route('/api/logs/ansible')
-def api_logs_ansible():
-    try:
-        result = subprocess.run(
-            ['journalctl', '-u', 'ansible-api.service', '-n', '50', '--no-pager'],
-            capture_output=True, text=True, check=True
-        )
-        lines = result.stdout.strip().split('\n')
-        return jsonify(lines[-100:]), 200
-    except Exception as e:
-        return jsonify([f"Ошибка чтения логов: {str(e)}"]), 500
-
-# ==== Веб-интерфейс ====
-@app.route('/')
-def dashboard():
-    db = get_db()
-    now = datetime.datetime.utcnow()
-    rows = db.execute('''
-        SELECT h.mac, h.ip, h.stage, h.details, h.ts,
-               (SELECT ts FROM hosts
-                WHERE mac = h.mac AND stage IN ('dhcp', 'ipxe_started')
-                ORDER BY ts ASC LIMIT 1) AS ipxe_ts
-        FROM hosts h
-        INNER JOIN (
-            SELECT mac, MAX(ts) AS last_ts FROM hosts GROUP BY mac
-        ) grp
-        ON h.mac = grp.mac AND h.ts = grp.last_ts
-        ORDER BY ipxe_ts DESC
-    ''').fetchall()
-    STAGE_LABELS = {
-        'dhcp': 'IP получен',
-        'ipxe_started': 'Загрузка iPXE',
-        'debian_install': 'Идёт установка',
-        'reboot': 'Перезагрузка',
-        'unknown': 'Неизвестно'
-    }
-    hosts = []
-    for r in rows:
-        mac, ip, stage, details, ts_utc, ipxe_utc = r
-        dt_last = datetime.datetime.fromisoformat(ts_utc) + LOCAL_OFFSET
-        stage_label = STAGE_LABELS.get(stage, stage)
-        online = (now + LOCAL_OFFSET - dt_last).total_seconds() < ONLINE_TIMEOUT
-        hosts.append({
-            'mac': mac,
-            'ip': ip or '—',
-            'stage': stage_label,
-            'last': dt_last.strftime('%H:%M:%S'),
-            'online': online,
-            'details': details or '',
-            'preseed_path': PRESEED_PATH
-        })
-    return render_template('dashboard.html', hosts=hosts)
 
 # ==== Запуск ====
 if __name__ == '__main__':
