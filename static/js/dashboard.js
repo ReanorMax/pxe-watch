@@ -180,12 +180,25 @@
       }
       return lines.join('\n');
     }
+    const preseedTextarea = document.getElementById('preseed-content');
     const generateBtn = document.getElementById('generate-preseed');
-    if (generateBtn) {
+    if (generateBtn && preseedTextarea) {
       generateBtn.onclick = () => {
         const count = parseInt(document.getElementById('disk-count').value, 10) || 1;
         const size = parseInt(document.getElementById('disk-size').value, 10) || 0;
-        document.getElementById('preseed-content').value = generatePartitionPreseed(count, size);
+        const snippet = generatePartitionPreseed(count, size);
+        let start = preseedTextarea.selectionStart;
+        let end = preseedTextarea.selectionEnd;
+        if (start === null || end === null) {
+          start = end = preseedTextarea.value.length;
+        }
+        const before = preseedTextarea.value.slice(0, start);
+        const after = preseedTextarea.value.slice(end);
+        const prefix = before && !before.endsWith('\n') ? '\n' : '';
+        preseedTextarea.value = before + prefix + snippet + after;
+        const cursorPos = (before + prefix + snippet).length;
+        preseedTextarea.setSelectionRange(cursorPos, cursorPos);
+        preseedTextarea.focus();
       };
     }
     let currentFilesPath = '';
