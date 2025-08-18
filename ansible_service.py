@@ -13,7 +13,6 @@ import configparser
 
 from flask import Flask, render_template, request, jsonify, abort
 from flask_socketio import SocketIO, emit
-import requests
 
 # ==== Конфигурация ====
 DB_PATH = os.getenv('DB_PATH', '/opt/pxewatch/pxe.db')
@@ -156,13 +155,33 @@ def api_ansible_run():
                     'total_steps': 10,
                     'started_at': started
                 })
-        resp = requests.post('http://localhost:5002/api/run-playbook', timeout=60)
-        if resp.status_code == 200:
-            return jsonify({'status': 'ok', 'data': resp.json()}), 200
+        result = subprocess.run(
+            ["ansible-playbook", ANSIBLE_PLAYBOOK, "-i", ANSIBLE_INVENTORY],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode == 0:
+            logging.info("ansible-playbook completed successfully")
+            return jsonify({'status': 'ok', 'data': result.stdout}), 200
         else:
-            return jsonify({'status': 'error', 'msg': resp.text}), resp.status_code
-    except requests.exceptions.ConnectionError:
-        return jsonify({'status': 'error', 'msg': 'Сервис ansible-api недоступен (порт 5002)'}), 503
+            logging.error(
+                "ansible-playbook failed with code %s: %s",
+                result.returncode,
+                result.stderr,
+            )
+            return (
+                jsonify(
+                    {
+                        'status': 'error',
+                        'code': result.returncode,
+                        'msg': result.stderr,
+                    }
+                ),
+                500,
+            )
+    except Exception as e:
+        logging.error(f"Ошибка запуска ansible-playbook: {e}")
+        return jsonify({'status': 'error', 'msg': str(e)}), 500
 
 # ==== API: логи ansible-api.service ====
 @app.route('/api/logs/ansible')
