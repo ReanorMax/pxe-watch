@@ -150,6 +150,44 @@
     setupSaveButton('save-dnsmasq', '/api/dnsmasq', 'dnsmasq-content', () => closeModal(document.getElementById('dnsmasq-modal')));
     setupSaveButton('save-playbook', '/api/ansible/playbook', null, () => closeModal(document.getElementById('playbook-modal')), true);
     setupSaveButton('save-inventory', '/api/ansible/inventory', 'inventory-content', () => closeModal(document.getElementById('inventory-modal')));
+    function generatePartitionPreseed(count, size) {
+      const lines = [];
+      const bootMB = 512;
+      const swapMB = Math.min(4096, Math.round(size * 1024 * 0.1));
+      const rootMB = Math.max(1, Math.round(size * 1024) - bootMB - swapMB);
+      for (let i = 0; i < count; i++) {
+        const diskLetter = String.fromCharCode('a'.charCodeAt(0) + i);
+        lines.push(`# /dev/sd${diskLetter}`);
+        lines.push(`d-i partman-auto/disk string /dev/sd${diskLetter}`);
+        lines.push('d-i partman-auto/method string regular');
+        lines.push('d-i partman-auto/choose_recipe select custom');
+        lines.push(`d-i partman-auto/expert_recipe string \\
+      custom :: \\
+              ${bootMB} ${bootMB} ${bootMB} ext4 \\
+                      $primary{ } $bootable{ } method{ format } format{ } \\
+                      use_filesystem{ } filesystem{ ext4 } mountpoint{ /boot } \\
+              . \\
+              ${swapMB} ${swapMB} ${swapMB} linux-swap \\
+                      method{ swap } format{ } \\
+              . \\
+              ${rootMB} ${rootMB} ${rootMB} ext4 \\
+                      method{ format } format{ } \\
+                      use_filesystem{ } filesystem{ ext4 } mountpoint{ / } \\
+              .`);
+        lines.push('d-i partman/confirm boolean true');
+        lines.push('d-i partman/confirm_nooverwrite boolean true');
+        lines.push('');
+      }
+      return lines.join('\n');
+    }
+    const generateBtn = document.getElementById('generate-preseed');
+    if (generateBtn) {
+      generateBtn.onclick = () => {
+        const count = parseInt(document.getElementById('disk-count').value, 10) || 1;
+        const size = parseInt(document.getElementById('disk-size').value, 10) || 0;
+        document.getElementById('preseed-content').value = generatePartitionPreseed(count, size);
+      };
+    }
     let currentFilesPath = '';
     const baseFilesPath = document.getElementById('files-modal-title').textContent.replace(/^Файлы\s*/, '');
     async function loadFilesList() {
