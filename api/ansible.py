@@ -3,6 +3,10 @@ import os
 import subprocess
 import logging
 import re
+import datetime
+import configparser
+
+from db_utils import get_db
 
 from config import (
     ANSIBLE_PLAYBOOK,
@@ -16,6 +20,20 @@ from services import (
     get_ansible_mark,
     create_file_api_handlers,
 )
+
+
+def get_macs_from_inventory():
+    try:
+        config = configparser.ConfigParser()
+        config.read(ANSIBLE_INVENTORY)
+        macs = []
+        for section in config.sections():
+            for key, val in config.items(section):
+                if key.startswith('mac'):
+                    macs.append(val.lower())
+        return macs
+    except Exception:
+        return []
 
 
 playbook_get, playbook_post = create_file_api_handlers(
@@ -79,6 +97,74 @@ def api_ansible_templates_list():
     except Exception as e:
         logging.error(f"Ошибка при получении списка шаблонов: {e}")
         return jsonify({'error': str(e)}), 500
+
+
+@api_bp.route('/ansible/task/<mac>')
+def api_ansible_task(mac):
+    with get_db() as db:
+        task = db.execute(
+            '''
+            SELECT * FROM ansible_tasks
+            WHERE mac = ? ORDER BY started_at DESC LIMIT 1
+            ''',
+            (mac,),
+        ).fetchone()
+        return jsonify(dict(task) if task else {})
+
+
+@api_bp.route('/ansible/clients')
+def api_ansible_clients():
+    with get_db() as db:
+        rows = db.execute(
+            '''
+            SELECT mac, task_name, status, step, total_steps, started_at
+            FROM ansible_tasks ORDER BY started_at DESC
+            '''
+        ).fetchall()
+        return jsonify([dict(r) for r in rows])
+
+
+@api_bp.route('/ansible/run', methods=['POST'])
+def api_ansible_run():
+    try:
+        macs = get_macs_from_inventory()
+        started = datetime.datetime.utcnow().isoformat()
+        with get_db() as db:
+            for mac in macs:
+                db.execute(
+                    '''
+                    INSERT INTO ansible_tasks(mac, task_name, status, step, total_steps, started_at)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                    ''',
+                    (mac, 'playbook.yml', 'running', 0, 10, started),
+                )
+        result = subprocess.run(
+            ["ansible-playbook", ANSIBLE_PLAYBOOK, "-i", ANSIBLE_INVENTORY],
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode == 0:
+            logging.info("ansible-playbook completed successfully")
+            return jsonify({'status': 'ok', 'data': result.stdout}), 200
+        else:
+            logging.error(
+                "ansible-playbook failed with code %s: %s",
+                result.returncode,
+                result.stderr,
+            )
+            return (
+                jsonify(
+                    {
+                        'status': 'error',
+                        'code': result.returncode,
+                        'msg': result.stderr,
+                    }
+                ),
+                500,
+            )
+    except Exception as e:
+        logging.error(f"Ошибка запуска ansible-playbook: {e}")
+        return jsonify({'status': 'error', 'msg': str(e)}), 500
 
 
 @api_bp.route('/ansible/status/<ip>', methods=['GET'])
