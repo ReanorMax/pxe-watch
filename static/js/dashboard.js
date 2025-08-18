@@ -150,33 +150,65 @@
     setupSaveButton('save-dnsmasq', '/api/dnsmasq', 'dnsmasq-content', () => closeModal(document.getElementById('dnsmasq-modal')));
     setupSaveButton('save-playbook', '/api/ansible/playbook', null, () => closeModal(document.getElementById('playbook-modal')), true);
     setupSaveButton('save-inventory', '/api/ansible/inventory', 'inventory-content', () => closeModal(document.getElementById('inventory-modal')));
-    document.getElementById('manage-files').onclick = async () => {
-        const listBody = document.getElementById('files-simple-list-body');
+    const filesModal = document.getElementById('files-modal');
+    const filesRoot = filesModal.dataset.rootPath;
+    const listBody = document.getElementById('files-simple-list-body');
+    let currentPath = '';
+
+    async function loadFiles() {
         listBody.innerHTML = '<tr><td colspan="3" style="text-align: center;">Загрузка...</td></tr>';
-        openModal(document.getElementById('files-modal'));
+        const headerSpan = filesModal.querySelector('header span');
+        const displayPath = currentPath ? `${filesRoot}/${currentPath}` : filesRoot;
+        headerSpan.textContent = `Файлы ${displayPath}`;
         try {
-            const res = await fetch('/api/ansible/files');
+            const res = await fetch(`/api/ansible/files${currentPath ? `?path=${encodeURIComponent(currentPath)}` : ''}`);
             const files = await res.json();
             listBody.innerHTML = '';
             if (files.error) {
-                 listBody.innerHTML = `<tr><td colspan="3" style="color:var(--danger);">Ошибка: ${files.error}</td></tr>`;
-                 return;
+                listBody.innerHTML = `<tr><td colspan="3" style="color:var(--danger);">Ошибка: ${files.error}</td></tr>`;
+                return;
+            }
+            if (currentPath) {
+                const upTr = document.createElement('tr');
+                upTr.innerHTML = '<td title="..">..</td><td>-</td><td>-</td>';
+                upTr.dataset.dir = '..';
+                listBody.appendChild(upTr);
             }
             if (files.length === 0) {
-                 listBody.innerHTML = '<tr><td colspan="3" style="text-align: center; font-style: italic;">Файлы не найдены</td></tr>';
-                 return;
+                listBody.innerHTML += '<tr><td colspan="3" style="text-align: center; font-style: italic;">Файлы не найдены</td></tr>';
+                return;
             }
             files.forEach(file => {
                 const tr = document.createElement('tr');
-                const escapedName = file.name.replace(/&/g, "&amp;").replace(/</g, "<").replace(/>/g, ">").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+                const escapedName = file.name.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
                 tr.innerHTML = `<td title="${escapedName}">${escapedName}</td><td>${file.size}</td><td>${file.modified}</td>`;
+                if (file.is_dir) tr.dataset.dir = file.name;
                 listBody.appendChild(tr);
             });
         } catch (e) {
-            console.error("Ошибка при загрузке списка файлов:", e);
+            console.error('Ошибка при загрузке списка файлов:', e);
             listBody.innerHTML = `<tr><td colspan="3" style="color:var(--danger);">Ошибка загрузки: ${e.message}</td></tr>`;
         }
+    }
+
+    document.getElementById('manage-files').onclick = () => {
+        currentPath = '';
+        openModal(filesModal);
+        loadFiles();
     };
+
+    listBody.addEventListener('click', e => {
+        const tr = e.target.closest('tr');
+        if (!tr || !tr.dataset.dir) return;
+        if (tr.dataset.dir === '..') {
+            const parts = currentPath.split('/').filter(Boolean);
+            parts.pop();
+            currentPath = parts.join('/');
+        } else {
+            currentPath = currentPath ? `${currentPath}/${tr.dataset.dir}` : tr.dataset.dir;
+        }
+        loadFiles();
+    });
     document.getElementById('add-dhcp-host').onclick = () => {
       const mac = prompt('MAC:');
       const ip = prompt('IP:');
@@ -272,18 +304,3 @@
       }
     });
     overlay.onclick = () => modals.forEach(closeModal);
-
-    document.getElementById('run-ansible').onclick = async () => {
-      if (!confirm('Запустить Ansible на всех хостах?')) return;
-      try {
-        const res = await fetch('/api/semaphore/trigger', { method: 'POST' });
-        const data = await res.json();
-        if (res.ok) {
-          alert(`Ansible запущен! Task ID: ${data.task_id}`);
-        } else {
-          alert('Ошибка: ' + (data.msg || 'Неизвестная ошибка'));
-        }
-      } catch (e) {
-        alert('Ошибка: ' + e.message);
-      }
-    };

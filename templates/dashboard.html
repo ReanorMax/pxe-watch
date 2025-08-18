@@ -37,9 +37,6 @@
       <div class="header-group">
         <button class="btn btn-danger" id="clear-db"><i class="fa fa-trash"></i> Очистить</button>
         <button class="btn" id="toggle-ansible"><i class="fa fa-robot"></i> Ansible</button>
-        <button class="btn" id="run-ansible" style="background:#43b581">
-          <i class="fa fa-play"></i> Запустить Ansible
-        </button>
       </div>
     </div>
   </header>
@@ -128,7 +125,7 @@
     <textarea id="inventory-content"></textarea>
     <div class="controls"><button class="btn" id="save-inventory"><i class="fa fa-save"></i> Сохранить</button></div>
   </div>
-  <div class="modal" id="files-modal">
+  <div class="modal" id="files-modal" data-root-path="{{ ansible_files_path }}">
     <header><span>Файлы {{ ansible_files_path }}</span><button class="btn close-modal" data-modal="files-modal"><i class="fa fa-times"></i></button></header>
     <div class="file-list-simple-container">
       <table class="file-simple-table">
