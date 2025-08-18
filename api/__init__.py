@@ -30,6 +30,7 @@ from services import (
     get_semaphore_status,
     trigger_semaphore_playbook,
 )
+from services.registration import register_host
 
 api_bp = Blueprint('api', __name__, url_prefix='/api')
 
@@ -48,23 +49,10 @@ def api_register():
     ip = request.values.get('ip', request.remote_addr)
     stage = request.values.get('stage', 'unknown')
     details = request.values.get('details', '')
-    if not mac:
-        logging.warning('Отсутствует MAC-адрес в запросе')
-        return 'Missing MAC', 400
-    ts = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
     try:
-        with get_db() as db:
-            db.execute('''
-                INSERT INTO hosts(mac, ip, stage, details, ts, first_ts)
-                VALUES (?, ?, ?, ?, ?, ?)
-                ON CONFLICT(mac) DO UPDATE SET
-                    ip = excluded.ip,
-                    stage = excluded.stage,
-                    details = excluded.details,
-                    ts = excluded.ts,
-                    first_ts = COALESCE(hosts.first_ts, excluded.ts)
-            ''', (mac, ip, stage, details, ts, ts))
-        logging.info(f'Зарегистрирован или обновлен хост с MAC: {mac}')
+        register_host(mac, ip, stage, details)
+    except ValueError:
+        return 'Missing MAC', 400
     except Exception as e:
         logging.error(f'Ошибка при регистрации хоста: {e}')
         return 'Error', 500
