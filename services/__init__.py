@@ -158,8 +158,13 @@ def get_ansible_mark(ip: str):
                 "SELECT status, updated FROM playbook_status WHERE ip = ?",
                 (ip,),
             ).fetchone()
-        if row and row['status'] == 'running':
-            return {'status': 'pending', 'msg': 'Ansible playbook is running'}
+        if row:
+            status = row['status']
+            updated = row['updated']
+            if status == 'running':
+                return {'status': 'pending', 'install_date': updated}
+            if status in ('ok', 'failed'):
+                return {'status': status, 'install_date': updated}
 
         db_status = row['status'] if row else None
         db_updated = row['updated'] if row else None
