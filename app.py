@@ -16,11 +16,10 @@ def create_app() -> Flask:
     app.register_blueprint(logtail_bp)
     app.register_blueprint(api_bp)
     app.register_blueprint(web_bp)
-
+    start_background_tasks()
     return app
 
 
 app = create_app()
 if __name__ == '__main__':
-    start_background_tasks()
     app.run(host='0.0.0.0', port=5000)
