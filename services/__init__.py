@@ -152,6 +152,8 @@ def get_ansible_mark(ip: str):
     """
     if not re.match(r'^\d{1,3}(\.\d{1,3}){3}$', ip) or ip == '—':
         return {'status': 'error', 'msg': 'Invalid IP'}
+    db_status = None
+    db_updated = None
     try:
         with get_db() as db:
             row = db.execute(
@@ -159,15 +161,10 @@ def get_ansible_mark(ip: str):
                 (ip,),
             ).fetchone()
         if row:
-            status = row['status']
-            updated = row['updated']
-            if status == 'running':
-                return {'status': 'pending', 'install_date': updated}
-            if status in ('ok', 'failed'):
-                return {'status': status, 'install_date': updated}
-
-        db_status = row['status'] if row else None
-        db_updated = row['updated'] if row else None
+            db_status = row['status']
+            db_updated = row['updated']
+        if db_status in ('ok', 'failed'):
+            return {'status': db_status, 'install_date': db_updated}
 
         cmd = (
             f"sshpass -p '{SSH_PASSWORD}' ssh {SSH_OPTIONS} {SSH_USER}@{ip} "
@@ -187,7 +184,8 @@ def get_ansible_mark(ip: str):
                     'msg': f'Некорректный JSON в mark.json: {str(e)}',
                 }
 
-        # SSH or file errors: fall back to DB if possible
+        if db_status == 'running' and db_updated:
+            return {'status': 'pending', 'install_date': db_updated}
         if db_status in ('ok', 'failed') and db_updated:
             return {'status': db_status, 'install_date': db_updated}
 
@@ -200,10 +198,14 @@ def get_ansible_mark(ip: str):
     except subprocess.TimeoutExpired:
         if db_status in ('ok', 'failed') and db_updated:
             return {'status': db_status, 'install_date': db_updated}
+        if db_status == 'running' and db_updated:
+            return {'status': 'pending', 'install_date': db_updated}
         return {'status': 'error', 'msg': 'Таймаут подключения к хосту'}
     except Exception as e:
         if db_status in ('ok', 'failed') and db_updated:
             return {'status': db_status, 'install_date': db_updated}
+        if db_status == 'running' and db_updated:
+            return {'status': 'pending', 'install_date': db_updated}
         return {'status': 'error', 'msg': f'Внутренняя ошибка: {str(e)}'}
 
 
