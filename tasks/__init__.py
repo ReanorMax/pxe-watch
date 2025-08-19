@@ -70,7 +70,7 @@ def parse_ansible_logs():
         logging.info("Начинаем анализ логов Ansible...")
         try:
             result = subprocess.run(
-                ['journalctl', '-u', ANSIBLE_SERVICE_NAME, '-n', '500', '--no-pager', '--since', '5 minutes ago'],
+                ['journalctl', '-u', ANSIBLE_SERVICE_NAME, '-n', '1000', '--no-pager'],
                 capture_output=True,
                 text=True,
                 check=True,
@@ -88,8 +88,28 @@ def parse_ansible_logs():
                     failed_count = int(recap_match.group(2))
                     if ip not in ip_status_map:
                         ip_status_map[ip] = 'failed' if failed_count > 0 else 'ok'
-            for ip, status in ip_status_map.items():
-                set_playbook_status(ip, status)
+            with get_db() as db:
+                for ip, status in ip_status_map.items():
+                    set_playbook_status(ip, status)
+                    mac_row = db.execute(
+                        "SELECT mac FROM hosts WHERE ip = ?",
+                        (ip,),
+                    ).fetchone()
+                    if mac_row:
+                        mac = mac_row['mac']
+                        task_row = db.execute(
+                            "SELECT id, total_steps FROM ansible_tasks WHERE mac = ? ORDER BY started_at DESC LIMIT 1",
+                            (mac,),
+                        ).fetchone()
+                        if task_row:
+                            db.execute(
+                                "UPDATE ansible_tasks SET status = ?, step = total_steps, finished_at = ? WHERE id = ?",
+                                (
+                                    'completed' if status == 'ok' else 'failed',
+                                    datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S'),
+                                    task_row['id'],
+                                ),
+                            )
             if ip_status_map:
                 logging.info(
                     f"Статусы Ansible обновлены для IP: {list(ip_status_map.keys())}"
