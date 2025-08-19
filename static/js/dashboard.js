@@ -296,7 +296,4 @@
         }
       }
     });
-    document.getElementById('open-preseed-builder').onclick = () => {
-      window.open('/preseed-builder', '_blank');
-    };
     overlay.onclick = () => modals.forEach(closeModal);
