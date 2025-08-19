@@ -224,7 +224,10 @@
     document.getElementById('toggle-ansible').onclick = () => {
       const p = document.getElementById('ansible-panel');
       p.style.display = p.style.display === 'none' ? 'block' : 'none';
-      if (p.style.display === 'block') loadAnsibleLog();
+      if (p.style.display === 'block') {
+        loadAnsibleLog();
+        loadAnsibleHistory();
+      }
     };
     async function loadAnsibleLog() {
       try {
@@ -243,6 +246,22 @@
       }
     }
     setInterval(loadAnsibleLog, 3000);
+    async function loadAnsibleHistory() {
+      try {
+        const res = await fetch('/api/ansible/history');
+        const rows = await res.json();
+        const tbody = document.getElementById('ansible-history-body');
+        tbody.innerHTML = '';
+        rows.forEach(r => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td>${r.mac}</td><td>${r.task_name}</td><td>${r.status}</td><td>${r.started_at ?? ''}</td><td>${r.finished_at ?? ''}</td>`;
+          tbody.appendChild(tr);
+        });
+      } catch (e) {
+        console.error('Ошибка загрузки истории Ansible:', e);
+      }
+    }
+    setInterval(loadAnsibleHistory, 10000);
     document.getElementById('hosts-table-body').addEventListener('click', async (e) => {
       if (e.target.closest('.btn-reboot')) {
         const ip = e.target.closest('.btn-reboot').dataset.ip;
