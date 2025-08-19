@@ -4,12 +4,13 @@ import logging
 
 from config import LOCAL_OFFSET, ANSIBLE_FILES_DIR
 from db_utils import get_db
-from services import get_ansible_mark
+from services import get_ansible_mark, sync_inventory_hosts
 
 web_bp = Blueprint('web', __name__)
 
 @web_bp.route('/')
 def dashboard():
+    sync_inventory_hosts()
     db = get_db()
     rows = db.execute('''
         SELECT h.mac, h.ip, h.stage, h.details, h.ts,

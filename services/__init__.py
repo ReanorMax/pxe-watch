@@ -75,6 +75,45 @@ def list_files_in_dir(directory: str):
     return file_list
 
 
+def sync_inventory_hosts() -> None:
+    """Ensure hosts from Ansible inventory exist in the database.
+
+    Reads ``ANSIBLE_INVENTORY`` and inserts entries for hosts that are not yet
+    present in the ``hosts`` table.  Only MAC addresses are mandatory; IP is
+    taken either from the ``ip`` field or from the section name if it looks
+    like an IPv4 address.
+    """
+    import configparser
+    from config import ANSIBLE_INVENTORY
+
+    try:
+        cfg = configparser.ConfigParser()
+        if not cfg.read(ANSIBLE_INVENTORY):
+            return
+        now = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        with get_db() as db:
+            for section in cfg.sections():
+                mac_val = None
+                for key, val in cfg.items(section):
+                    if key.startswith("mac") and val:
+                        mac_val = val.lower()
+                        break
+                if not mac_val:
+                    continue
+                ip_val = cfg[section].get("ip")
+                if not ip_val and re.match(r"^\d{1,3}(\.\d{1,3}){3}$", section):
+                    ip_val = section
+                db.execute(
+                    """
+                    INSERT OR IGNORE INTO hosts(mac, ip, stage, details, ts, first_ts)
+                    VALUES (?, ?, '', '', ?, ?)
+                    """,
+                    (mac_val, ip_val or '—', now, now),
+                )
+    except Exception as e:
+        logging.warning(f"Не удалось синхронизировать инвентарь: {e}")
+
+
 def set_playbook_status(ip: str, status: str, updated: Optional[str] = None) -> None:
     """Store Ansible playbook status for host.
 
