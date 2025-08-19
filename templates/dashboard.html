@@ -47,6 +47,31 @@
       <button class="btn" id="edit-playbook"><i class="fa fa-file-code"></i> playbook.yml</button>
       <button class="btn" id="manage-files"><i class="fa fa-folder"></i> Файлы</button>
     </div>
+    <h4><i class="fa fa-history"></i> Последние запуски</h4>
+    <div class="ansible-history">
+      <table>
+        <thead>
+          <tr>
+            <th>MAC</th>
+            <th>Задача</th>
+            <th>Статус</th>
+            <th>Начало</th>
+            <th>Окончание</th>
+          </tr>
+        </thead>
+        <tbody id="ansible-history-body">
+          {% for item in history %}
+          <tr>
+            <td>{{ item.mac }}</td>
+            <td>{{ item.task_name }}</td>
+            <td>{{ item.status }}</td>
+            <td>{{ item.started_at }}</td>
+            <td>{{ item.finished_at or '' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
     <h4><i class="fa fa-terminal"></i> Журнал выполнения Ansible</h4>
     <div class="log-viewer" id="ansible-log"></div>
   </div>
