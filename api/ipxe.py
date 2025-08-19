@@ -11,6 +11,7 @@ from config import (
 )
 from . import api_bp
 from services import read_file, write_file
+from services.preseed_generator import update_disk_section
 import os
 import shutil
 
@@ -94,6 +95,20 @@ def api_preseed_activate():
     except OSError as e:
         logging.error(f'Ошибка при активации preseed файла: {e}')
         return jsonify({'status': 'error', 'msg': str(e)}), 500
+
+
+@api_bp.route('/preseed/disks', methods=['POST'])
+def api_preseed_disks():
+    """Update disk section of preseed file based on provided parameters."""
+    name = request.args.get('name') or _active_preseed_name()
+    data = request.get_json(force=True) or {}
+    disk_count = int(data.get('disks', 1))
+    volume = int(data.get('volume', 10))
+    path = _preseed_file_path(name)
+    content = read_file(path)
+    new_content = update_disk_section(content, disk_count, volume)
+    write_file(path, new_content)
+    return jsonify({'status': 'ok'}), 200
 
 
 @api_bp.route('/ipxe', methods=['GET'])
