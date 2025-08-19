@@ -124,20 +124,6 @@ def api_ansible_clients():
         return jsonify([dict(r) for r in rows])
 
 
-@api_bp.route('/ansible/history')
-def api_ansible_history():
-    limit = int(request.args.get('limit', 20))
-    with get_db() as db:
-        rows = db.execute(
-            '''
-            SELECT mac, task_name, status, step, total_steps, started_at, finished_at
-            FROM ansible_tasks ORDER BY started_at DESC LIMIT ?
-            ''',
-            (limit,),
-        ).fetchall()
-    return jsonify([dict(r) for r in rows])
-
-
 @api_bp.route('/ansible/run', methods=['POST'])
 def api_ansible_run():
     try:
