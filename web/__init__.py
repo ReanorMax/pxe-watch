@@ -49,6 +49,8 @@ def dashboard():
                 install_dt = datetime.datetime.fromisoformat(
                     install_date_str.replace('Z', '+00:00')
                 )
+                if install_dt.tzinfo is None:
+                    install_dt = install_dt.replace(tzinfo=datetime.timezone.utc)
                 install_dt = install_dt.astimezone(
                     datetime.timezone.utc
                 ) + LOCAL_OFFSET
@@ -63,7 +65,22 @@ def dashboard():
                 )
                 stage_label = '✅ Ansible: завершён (дата неизвестна)'
         elif ansible_status == 'pending':
-            stage_label = STAGE_LABELS.get(stage, '—') + ' ⏳ Ansible: в процессе'
+            label = STAGE_LABELS.get(stage, '—') + ' ⏳ Ansible: в процессе'
+            date_str = ansible_result.get('install_date')
+            if date_str:
+                try:
+                    install_dt = datetime.datetime.fromisoformat(
+                        date_str.replace('Z', '+00:00')
+                    )
+                    if install_dt.tzinfo is None:
+                        install_dt = install_dt.replace(tzinfo=datetime.timezone.utc)
+                    install_dt = install_dt.astimezone(
+                        datetime.timezone.utc
+                    ) + LOCAL_OFFSET
+                    label += ' с ' + install_dt.strftime('%d.%m.%Y %H:%M')
+                except Exception:
+                    pass
+            stage_label = label
         else:
             stage_label = STAGE_LABELS.get(stage, '—')
         hosts.append({

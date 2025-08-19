@@ -46,45 +46,6 @@
             }
         });
     }
-    async function refreshTable() {
-      try {
-        const res = await fetch('/');
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const html = await res.text();
-        const parser = new DOMParser();
-        const newDoc = parser.parseFromString(html, 'text/html');
-        const newRows = newDoc.querySelectorAll('#hosts-table-body tr');
-        const currentTbody = document.getElementById('hosts-table-body');
-        const currentMap = {};
-        currentTbody.querySelectorAll('tr').forEach(tr => {
-          const ip = tr.dataset.ip;
-          if (ip) currentMap[ip] = tr;
-        });
-        const newMap = {};
-        newRows.forEach(tr => {
-          const ip = tr.dataset.ip;
-          if (ip) newMap[ip] = tr;
-        });
-        Object.keys(currentMap).forEach(ip => {
-          if (!newMap[ip]) currentMap[ip].remove();
-        });
-        newRows.forEach(newTr => {
-          const ip = newTr.dataset.ip;
-          if (ip) {
-            const existing = currentMap[ip];
-            if (existing) {
-              existing.innerHTML = newTr.innerHTML;
-            } else {
-              currentTbody.appendChild(newTr);
-            }
-          }
-        });
-        updatePortainerLinks();
-      } catch (e) {
-        console.warn('Ошибка обновления таблицы:', e);
-      }
-    }
-    setInterval(refreshTable, 30000);
     document.addEventListener('DOMContentLoaded', updatePortainerLinks);
     async function openModalWithContent(modalId, apiUrl, contentElementId, isPlaybook = false) {
       const modal = document.getElementById(modalId);
@@ -328,8 +289,6 @@
         loadAnsibleLog();
       }
     };
-    const refreshBtn = document.getElementById('refresh-hosts');
-    if (refreshBtn) refreshBtn.onclick = refreshTable;
     async function loadAnsibleLog() {
       try {
         const res = await fetch(`/api/logs/ansible?limit=${ansibleLogLimit}`);
