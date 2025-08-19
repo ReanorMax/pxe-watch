@@ -50,6 +50,28 @@
     <h4><i class="fa fa-terminal"></i> Журнал выполнения Ansible</h4>
     <div class="log-viewer" id="ansible-log"></div>
   </div>
+  <div class="stats-container">
+    <div class="stat-card">
+      <div class="stat-number">{{ total_hosts }}</div>
+      <div class="stat-title">Total Hosts</div>
+      <div class="stat-subtitle">Active monitoring</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number">{{ online_hosts }}</div>
+      <div class="stat-title">Online</div>
+      <div class="stat-subtitle">Connected now</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number">{{ installing_hosts }}</div>
+      <div class="stat-title">Installing</div>
+      <div class="stat-subtitle">In progress</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number">{{ completed_hosts }}</div>
+      <div class="stat-title">Completed</div>
+      <div class="stat-subtitle">Successfully deployed</div>
+    </div>
+  </div>
   <div class="container">
     <table>
       <thead>

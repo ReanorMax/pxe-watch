@@ -32,10 +32,16 @@ def dashboard():
         'reboot': 'Перезагрузка'
     }
     hosts = []
+    total_hosts = len(rows)
+    online_count = 0
+    installing_count = 0
+    completed_count = 0
     for row in rows:
         mac, ip, stage, details, ts_utc, ipxe_utc, db_is_online = row
         last_seen = datetime.datetime.fromisoformat(ts_utc) + LOCAL_OFFSET
         is_online = bool(db_is_online)
+        if is_online:
+            online_count += 1
         ansible_result = get_ansible_mark(ip)
         if ansible_result.get('status') == 'ok':
             try:
@@ -50,10 +56,13 @@ def dashboard():
             except Exception as e:
                 logging.warning(f"Ошибка парсинга даты в ansible_mark.json для {ip}: {e}")
                 stage_label = '✅ Ansible: завершён (дата неизвестна)'
+            completed_count += 1
         elif ansible_result.get('status') == 'pending':
             stage_label = STAGE_LABELS.get(stage, '—') + ' ⏳ Ansible: в процессе'
         else:
             stage_label = STAGE_LABELS.get(stage, '—')
+        if stage == 'debian_install':
+            installing_count += 1
         hosts.append({
             'mac': mac,
             'ip': ip or '—',
@@ -67,4 +76,8 @@ def dashboard():
         hosts=hosts,
         stage_labels=STAGE_LABELS,
         ansible_files_path=ANSIBLE_FILES_DIR,
+        total_hosts=total_hosts,
+        online_hosts=online_count,
+        installing_hosts=installing_count,
+        completed_hosts=completed_count,
     )
