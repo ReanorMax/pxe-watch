@@ -182,9 +182,15 @@ def api_ansible_status(ip: str):
 
 @api_bp.route('/logs/ansible', methods=['GET'])
 def api_logs_ansible():
+    """Return colored ansible service logs with optional pagination."""
+    limit = request.args.get('limit', default=100, type=int)
+    offset = request.args.get('offset', default=0, type=int)
+    limit = max(1, min(limit, 1000))
+    offset = max(0, offset)
     try:
+        fetch_lines = str(limit + offset)
         result = subprocess.run(
-            ['journalctl', '-u', 'ansible-api.service', '-n', '300', '--no-pager'],
+            ['journalctl', '-u', 'ansible-api.service', '-n', fetch_lines, '--no-pager'],
             capture_output=True,
             text=True,
             check=True,
@@ -228,7 +234,10 @@ def api_logs_ansible():
                 line,
             )
             colored_lines.append(line)
-        return jsonify(colored_lines[-100:]), 200
+        window = colored_lines[-(limit + offset):]
+        if offset:
+            window = window[:-offset]
+        return jsonify(window), 200
     except subprocess.CalledProcessError as e:
         logging.error(f'Ошибка выполнения journalctl: {e}')
         msg = f"Ошибка выполнения journalctl: {e}"

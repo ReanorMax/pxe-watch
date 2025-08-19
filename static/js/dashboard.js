@@ -1,4 +1,6 @@
     let playbookEditor;
+    let ansibleLogLimit = 100;
+    let autoScroll = true;
     document.addEventListener('DOMContentLoaded', () => {
       playbookEditor = CodeMirror(document.getElementById('playbook-editor'), {
         value: "",
@@ -321,11 +323,14 @@
     document.getElementById('toggle-ansible').onclick = () => {
       const p = document.getElementById('ansible-panel');
       p.style.display = p.style.display === 'none' ? 'block' : 'none';
-      if (p.style.display === 'block') loadAnsibleLog();
+      if (p.style.display === 'block') {
+        autoScroll = true;
+        loadAnsibleLog();
+      }
     };
     async function loadAnsibleLog() {
       try {
-        const res = await fetch('/api/logs/ansible');
+        const res = await fetch(`/api/logs/ansible?limit=${ansibleLogLimit}`);
         const lines = await res.json();
         const logEl = document.getElementById('ansible-log');
         logEl.innerHTML = '';
@@ -334,12 +339,32 @@
             div.innerHTML = line;
             logEl.appendChild(div);
         });
-        setTimeout(() => logEl.scrollTop = logEl.scrollHeight, 0);
+        if (autoScroll) setTimeout(() => logEl.scrollTop = logEl.scrollHeight, 0);
       } catch (e) {
         document.getElementById('ansible-log').innerHTML = `<span style="color:#ff6b6b">Ошибка: ${e.message}</span>`;
       }
     }
     setInterval(loadAnsibleLog, 3000);
+    const ansibleLogEl = document.getElementById('ansible-log');
+    ansibleLogEl.addEventListener('scroll', () => {
+      const atBottom = ansibleLogEl.scrollTop + ansibleLogEl.clientHeight >= ansibleLogEl.scrollHeight - 5;
+      autoScroll = atBottom;
+    });
+    document.getElementById('ansible-log-limit').addEventListener('change', e => {
+      ansibleLogLimit = parseInt(e.target.value, 10);
+      loadAnsibleLog();
+    });
+    document.getElementById('collapse-ansible-log').onclick = () => {
+      const log = document.getElementById('ansible-log');
+      const btn = document.getElementById('collapse-ansible-log');
+      if (log.style.display === 'none') {
+        log.style.display = 'block';
+        btn.innerHTML = '<i class="fa fa-chevron-up"></i>';
+      } else {
+        log.style.display = 'none';
+        btn.innerHTML = '<i class="fa fa-chevron-down"></i>';
+      }
+    };
     document.getElementById('hosts-table-body').addEventListener('click', async (e) => {
       if (e.target.closest('.btn-reboot')) {
         const ip = e.target.closest('.btn-reboot').dataset.ip;
