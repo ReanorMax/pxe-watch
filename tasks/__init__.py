@@ -100,6 +100,15 @@ def parse_ansible_logs():
                     status = 'failed' if int(failed_str) > 0 else 'ok'
                     ts = datetime.datetime.fromisoformat(ts_str)
                     ip_status_map[ip] = {'status': status, 'ts': ts}
+                    continue
+                running_match = re.search(
+                    r'^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}).*?\[(\d+\.\d+\.\d+\.\d+)\]',
+                    line,
+                )
+                if running_match:
+                    ts_str, ip = running_match.groups()
+                    ts = datetime.datetime.fromisoformat(ts_str)
+                    ip_status_map.setdefault(ip, {'status': 'running', 'ts': ts})
             for ip, data in ip_status_map.items():
                 set_playbook_status(ip, data['status'], data['ts'].strftime('%Y-%m-%d %H:%M:%S'))
             if ip_status_map:
