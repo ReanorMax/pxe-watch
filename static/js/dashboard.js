@@ -328,8 +328,6 @@
         loadAnsibleLog();
       }
     };
-    const refreshBtn = document.getElementById('refresh-hosts');
-    if (refreshBtn) refreshBtn.onclick = refreshTable;
     async function loadAnsibleLog() {
       try {
         const res = await fetch(`/api/logs/ansible?limit=${ansibleLogLimit}`);
