@@ -156,9 +156,6 @@
     .modal header { background: var(--accent); color: #fff; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
     #preseed-modal .preseed-top-controls { padding: 12px; display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
     #preseed-modal .preseed-top-controls select { flex: 1; }
-    #preseed-modal .preseed-generator { padding: 12px; display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
-    #preseed-modal .preseed-generator label { display: flex; gap: 4px; align-items: center; }
-    #preseed-modal .preseed-generator input { width: 80px; }
     #playbook-editor-container { flex: 1; overflow: hidden; position: relative; }
     #playbook-editor { height: 100%; width: 100%; }
     .CodeMirror { height: 100% !important; font-family: 'Fira Code', monospace !important; font-size: 14px !important; line-height: 1.5 !important; margin: 0 !important; padding: 0 !important; }
