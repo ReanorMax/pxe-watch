@@ -65,55 +65,34 @@ def ping_hosts_background():
 def parse_ansible_logs():
     """Background task parsing Ansible logs and updating statuses."""
     last_checked_lines = set()
-    first_run = True
     while True:
         time.sleep(30)
         logging.info("Начинаем анализ логов Ansible...")
         try:
-            since = '1 year ago' if first_run else '5 minutes ago'
-            first_run = False
             result = subprocess.run(
-                [
-                    'journalctl',
-                    '-u',
-                    ANSIBLE_SERVICE_NAME,
-                    '--no-pager',
-                    '--since',
-                    since,
-                    '-o',
-                    'short-iso',
-                ],
+                ['journalctl', '-u', ANSIBLE_SERVICE_NAME, '-n', '500', '--no-pager', '--since', '5 minutes ago'],
                 capture_output=True,
                 text=True,
                 check=True,
             )
-            lines = result.stdout.strip().split('\n') if result.stdout else []
+            lines = result.stdout.strip().split('\n')
             new_lines = [line for line in lines if line not in last_checked_lines]
-            last_checked_lines.update(new_lines[-500:])
+            last_checked_lines.update(new_lines[-100:])
             ip_status_map = {}
             for line in reversed(new_lines):
                 if 'PLAY RECAP' in line:
                     continue
-                recap_match = re.search(
-                    r'^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}).*(\d+\.\d+\.\d+\.\d+)\s*:.*?failed=(\d+)',
-                    line,
-                )
+                recap_match = re.search(r'(\d+\.\d+\.\d+\.\d+)\s*:.*?failed=(\d+)', line)
                 if recap_match:
-                    ts_iso, ip, failed_str = recap_match.groups()
-                    failed_count = int(failed_str)
+                    ip = recap_match.group(1)
+                    failed_count = int(recap_match.group(2))
                     if ip not in ip_status_map:
-                        status = 'failed' if failed_count > 0 else 'ok'
-                        ts = (
-                            datetime.datetime.fromisoformat(ts_iso)
-                            .strftime('%Y-%m-%d %H:%M:%S')
-                        )
-                        ip_status_map[ip] = (status, ts)
-            for ip, (status, ts) in ip_status_map.items():
-                set_playbook_status(ip, status, ts)
+                        ip_status_map[ip] = 'failed' if failed_count > 0 else 'ok'
+            for ip, status in ip_status_map.items():
+                set_playbook_status(ip, status)
             if ip_status_map:
                 logging.info(
-                    "Статусы Ansible обновлены для IP: %s",
-                    list(ip_status_map.keys()),
+                    f"Статусы Ansible обновлены для IP: {list(ip_status_map.keys())}"
                 )
         except subprocess.CalledProcessError as e:
             logging.warning(
