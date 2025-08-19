@@ -9,6 +9,9 @@ from config import ANSIBLE_SERVICE_NAME
 from db_utils import get_db
 from services import set_playbook_status
 
+# Ensure background threads start only once
+_tasks_started = False
+
 
 def ping_host(ip: str) -> bool:
     """Ping host and return True if reachable."""
@@ -126,5 +129,9 @@ def parse_ansible_logs():
             )
 def start_background_tasks() -> None:
     """Start all background threads."""
+    global _tasks_started
+    if _tasks_started:
+        return
+    _tasks_started = True
     threading.Thread(target=ping_hosts_background, daemon=True).start()
     threading.Thread(target=parse_ansible_logs, daemon=True).start()
