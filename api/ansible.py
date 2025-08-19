@@ -150,6 +150,33 @@ def api_ansible_run():
             capture_output=True,
             text=True,
         )
+        ip_status_map = {}
+        recap_started = False
+        for line in result.stdout.splitlines():
+            if line.strip().startswith("PLAY RECAP"):
+                recap_started = True
+                continue
+            if recap_started:
+                match = re.search(r"(\d+\.\d+\.\d+\.\d+).*failed=(\d+)", line)
+                if match:
+                    ip, failed = match.groups()
+                    ip_status_map[ip] = 'failed' if int(failed) > 0 else 'ok'
+        if ip_status_map:
+            with get_db() as db:
+                for ip, status in ip_status_map.items():
+                    set_playbook_status(ip, status)
+                    mac_row = db.execute(
+                        "SELECT mac FROM hosts WHERE ip = ?", (ip,)
+                    ).fetchone()
+                    if mac_row:
+                        db.execute(
+                            """
+                            UPDATE ansible_tasks
+                            SET status=?, step=10
+                            WHERE mac=? AND started_at=?
+                            """,
+                            (status, mac_row['mac'], started),
+                        )
         if result.returncode == 0:
             logging.info("ansible-playbook completed successfully")
             return jsonify({'status': 'ok', 'data': result.stdout}), 200
