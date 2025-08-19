@@ -103,12 +103,10 @@ def get_ansible_mark(ip: str):
         # First check local playbook_status to see if Ansible is running
         with get_db() as db:
             row = db.execute(
-                "SELECT status, updated FROM playbook_status WHERE ip = ?",
+                "SELECT status FROM playbook_status WHERE ip = ?",
                 (ip,),
             ).fetchone()
-        status = row['status'] if row else None
-        updated = row['updated'] if row else None
-        if status == 'running':
+        if row and row['status'] == 'running':
             return {'status': 'pending', 'msg': 'Ansible playbook is running'}
 
         cmd = (
@@ -118,25 +116,22 @@ def get_ansible_mark(ip: str):
         result = subprocess.run(
             cmd, shell=True, capture_output=True, text=True, timeout=10
         )
-        if result.returncode == 0:
-            try:
-                data = json.loads(result.stdout)
-                data['status'] = 'ok'
-                return data
-            except json.JSONDecodeError as e:
+        if result.returncode != 0:
+            if "No such file" in result.stderr:
                 return {
-                    'status': 'error',
-                    'msg': f'Некорректный JSON в mark.json: {str(e)}',
+                    'status': 'none',
+                    'msg': 'Файл mark.json не найден',
                 }
-
-        if "No such file" in result.stderr and status in ('ok', 'failed'):
-            return {'status': status, 'install_date': updated}
-        if "No such file" in result.stderr:
+            return {'status': 'error', 'msg': f"SSH ошибка: {result.stderr.strip()}"}
+        try:
+            data = json.loads(result.stdout)
+            data['status'] = 'ok'
+            return data
+        except json.JSONDecodeError as e:
             return {
-                'status': 'none',
-                'msg': 'Файл mark.json не найден',
+                'status': 'error',
+                'msg': f'Некорректный JSON в mark.json: {str(e)}',
             }
-        return {'status': 'error', 'msg': f"SSH ошибка: {result.stderr.strip()}"}
     except subprocess.TimeoutExpired:
         return {'status': 'error', 'msg': 'Таймаут подключения к хосту'}
     except Exception as e:
