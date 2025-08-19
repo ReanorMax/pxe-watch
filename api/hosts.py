@@ -11,6 +11,7 @@ from config import (
 )
 from . import api_bp
 from services.registration import register_host
+from services import sync_inventory_hosts
 
 
 @api_bp.route('/register', methods=['GET', 'POST'])
@@ -37,6 +38,16 @@ def api_register():
     except Exception as e:
         logging.error(f'Ошибка запуска playbook: {e}')
     return 'OK', 200
+
+
+@api_bp.route('/hosts/refresh', methods=['POST'])
+def api_hosts_refresh():
+    try:
+        sync_inventory_hosts()
+        return jsonify({'status': 'ok'}), 200
+    except Exception as e:
+        logging.error(f'Ошибка синхронизации инвентаря: {e}')
+        return jsonify({'status': 'error', 'msg': 'Failed to sync inventory'}), 500
 
 
 @api_bp.route('/host/reboot', methods=['POST'])

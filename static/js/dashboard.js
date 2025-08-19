@@ -309,6 +309,15 @@
         textarea.value = `dhcp-host=${mac},${ip},12h\n${textarea.value}`;
       }
     };
+    document.getElementById('refresh-hosts').onclick = async () => {
+      try {
+        const res = await fetch('/api/hosts/refresh', { method: 'POST' });
+        if (!res.ok) throw new Error((await res.json()).msg);
+        await refreshTable();
+      } catch (e) {
+        alert('Ошибка: ' + e.message);
+      }
+    };
     document.getElementById('clear-db').onclick = async () => {
       if (!confirm('Удалить базу данных?')) return;
       try {

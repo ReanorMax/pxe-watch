@@ -75,6 +75,68 @@ def list_files_in_dir(directory: str):
     return file_list
 
 
+def sync_inventory_hosts() -> None:
+    """Ensure hosts from Ansible inventory exist in the database.
+
+    Reads ``ANSIBLE_INVENTORY`` and inserts entries for hosts that are not yet
+    present in the ``hosts`` table. Only ``mac`` is mandatory; IP can be
+    supplied as the first token, via ``ip=`` or ``ansible_host=`` assignments.
+    Lines starting with ``#`` or ``[`` are ignored.
+    """
+    from config import ANSIBLE_INVENTORY
+
+    ip_re = re.compile(r"^\d{1,3}(?:\.\d{1,3}){3}$")
+
+    try:
+        with open(ANSIBLE_INVENTORY, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+    except FileNotFoundError:
+        return
+
+    try:
+        now = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        with get_db() as db:
+            for line in lines:
+                line = line.split("#", 1)[0].strip()
+                if not line or line.startswith("["):
+                    continue
+                tokens = line.split()
+                if not tokens:
+                    continue
+
+                ip_val = None
+                mac_val = None
+
+                first = tokens[0]
+                if ip_re.match(first):
+                    ip_val = first
+
+                for tok in tokens[1:]:
+                    key, sep, value = tok.partition("=")
+                    if not sep:
+                        continue
+                    key = key.lower()
+                    if key == "mac":
+                        mac_val = value.lower()
+                    elif key in ("ansible_host", "ip"):
+                        ip_val = value
+
+                if not mac_val:
+                    continue
+
+                db.execute(
+                    """
+                    INSERT OR IGNORE INTO hosts(mac, ip, stage, details, ts, first_ts)
+                    VALUES (?, ?, '', '', ?, ?)
+                    """,
+                    (mac_val, ip_val or '—', now, now),
+                )
+    except Exception as e:
+        logging.warning(
+            f"Не удалось синхронизировать инвентарь: {e}"
+        )
+
+
 def set_playbook_status(ip: str, status: str, updated: Optional[str] = None) -> None:
     """Store Ansible playbook status for host.
 

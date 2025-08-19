@@ -33,13 +33,14 @@
         <button class="btn" id="edit-dnsmasq"><i class="fa fa-network-wired"></i> DHCP / iPXE</button>
         <button class="btn" id="edit-ipxe"><i class="fa fa-code"></i> iPXE</button>
       </div>
-      <div class="divider"></div>
-      <div class="header-group">
-        <button class="btn btn-danger" id="clear-db"><i class="fa fa-trash"></i> Очистить</button>
-        <button class="btn" id="toggle-ansible"><i class="fa fa-robot"></i> Ansible</button>
+        <div class="divider"></div>
+        <div class="header-group">
+          <button class="btn" id="refresh-hosts"><i class="fa fa-sync"></i> Обновить</button>
+          <button class="btn btn-danger" id="clear-db"><i class="fa fa-trash"></i> Очистить</button>
+          <button class="btn" id="toggle-ansible"><i class="fa fa-robot"></i> Ansible</button>
+        </div>
       </div>
-    </div>
-  </header>
+    </header>
   <div id="ansible-panel" style="margin: 24px 0; padding: 16px; border-radius: 8px; background: var(--bg); border: 1px solid var(--border); display: none;">
     <h3><i class="fa fa-robot"></i> Ansible</h3>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
