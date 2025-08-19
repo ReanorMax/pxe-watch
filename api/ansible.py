@@ -185,6 +185,18 @@ def api_ansible_run():
         if tags:
             cmd.extend(["--tags", ",".join(tags)])
         result = subprocess.run(cmd, capture_output=True, text=True)
+
+        # Ignore warnings about collections not supporting the current Ansible version.
+        # These warnings are emitted on stderr and previously caused the API to
+        # treat the execution as a failure even though ``ansible-playbook``
+        # returned successfully.  We filter them out so that such warnings do
+        # not trigger an error response.
+        warning_re = re.compile(
+            r"^\[WARNING\]: Collection .* does not support Ansible version"
+        )
+        stderr_lines = result.stderr.splitlines() if result.stderr else []
+        non_warning_lines = [line for line in stderr_lines if not warning_re.match(line)]
+
         ip_status_map = {}
         recap_started = False
         for line in result.stdout.splitlines():
@@ -212,8 +224,19 @@ def api_ansible_run():
                             """,
                             (status, mac_row['mac'], started),
                         )
-        if result.returncode == 0:
-            logging.info("ansible-playbook completed successfully")
+        if result.returncode == 0 or not non_warning_lines:
+            if non_warning_lines:
+                logging.warning(
+                    "ansible-playbook completed with warnings: %s",
+                    "\n".join(non_warning_lines),
+                )
+            elif stderr_lines:
+                logging.warning(
+                    "ansible-playbook reported version warnings: %s",
+                    "\n".join(stderr_lines),
+                )
+            else:
+                logging.info("ansible-playbook completed successfully")
             return jsonify({'status': 'ok', 'data': result.stdout}), 200
         else:
             logging.error(
