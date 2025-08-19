@@ -117,6 +117,14 @@
     .btn-logtail:hover { background: #7b1fa2; }
     .btn-logtail i { font-size: 0.9em; }
     .container { padding: 24px; }
+    .stats-container { display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
+    .stat-card { flex: 1; min-width: 120px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px; text-align: center; box-shadow: var(--table-shadow); }
+    .stat-number { font-size: 1.8em; font-weight: 700; margin-bottom: 4px; }
+    .stat-label { font-size: 0.85em; font-weight: 600; color: var(--grey); letter-spacing: 1px; }
+    .stat-card.total .stat-number { color: var(--accent); }
+    .stat-card.online .stat-number { color: var(--green); }
+    .stat-card.installing .stat-number { color: var(--orange); }
+    .stat-card.completed .stat-number { color: var(--green); }
     table {
       width: 100%;
       border-collapse: collapse;
