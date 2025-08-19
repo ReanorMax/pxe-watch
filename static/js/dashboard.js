@@ -245,26 +245,6 @@
         alert('Ошибка создания: ' + e.message);
       }
     };
-
-    document.getElementById('preseed-generate').onclick = async () => {
-      const disks = parseInt(prompt('Количество дисков:'), 10);
-      const size = parseInt(prompt('Размер одного диска (ГБ):'), 10);
-      if (!disks || !size) return;
-      const name = document.getElementById('preseed-select').value;
-      try {
-        const res = await fetch('/api/preseed/generate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, disks, size_gb: size })
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.msg);
-        await loadPreseedContent();
-        alert(data.summary);
-      } catch (e) {
-        alert('Ошибка генерации: ' + e.message);
-      }
-    };
     let currentFilesPath = '';
     const baseFilesPath = document.getElementById('files-modal-title').textContent.replace(/^Файлы\s*/, '');
     async function loadFilesList() {
