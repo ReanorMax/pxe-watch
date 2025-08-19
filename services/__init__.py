@@ -4,6 +4,7 @@ import subprocess
 import datetime
 import re
 import json
+from typing import Optional
 from flask import jsonify, abort, request
 
 from config import (
@@ -74,9 +75,17 @@ def list_files_in_dir(directory: str):
     return file_list
 
 
-def set_playbook_status(ip: str, status: str) -> None:
-    """Store Ansible playbook status for host."""
+def set_playbook_status(ip: str, status: str, updated: Optional[str] = None) -> None:
+    """Store Ansible playbook status for host.
+
+    Args:
+        ip: Host IP address.
+        status: One of ``running``, ``ok`` or ``failed``.
+        updated: Optional timestamp (in ISO format) of when the status was
+            recorded.  If not provided, current UTC time is used.
+    """
     try:
+        ts = updated or datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
         with get_db() as db:
             db.execute(
                 '''
@@ -86,7 +95,7 @@ def set_playbook_status(ip: str, status: str) -> None:
                   status = excluded.status,
                   updated = excluded.updated
                 ''',
-                (ip, status, datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')),
+                (ip, status, ts),
             )
         logging.info(f"Статус Ansible для {ip} установлен в '{status}'")
     except Exception as e:
@@ -96,18 +105,25 @@ def set_playbook_status(ip: str, status: str) -> None:
 
 
 def get_ansible_mark(ip: str):
-    """Fetch /opt/ansible_mark.json from remote host via SSH."""
+    """Fetch ``/opt/ansible_mark.json`` or fall back to stored status.
+
+    Returns a dict with at least a ``status`` field.  When the mark file is
+    unavailable but a status exists in the local database, the database value is
+    returned so that the dashboard can still reflect the final playbook result.
+    """
     if not re.match(r'^\d{1,3}(\.\d{1,3}){3}$', ip) or ip == '—':
         return {'status': 'error', 'msg': 'Invalid IP'}
     try:
-        # First check local playbook_status to see if Ansible is running
         with get_db() as db:
             row = db.execute(
-                "SELECT status FROM playbook_status WHERE ip = ?",
+                "SELECT status, updated FROM playbook_status WHERE ip = ?",
                 (ip,),
             ).fetchone()
         if row and row['status'] == 'running':
             return {'status': 'pending', 'msg': 'Ansible playbook is running'}
+
+        db_status = row['status'] if row else None
+        db_updated = row['updated'] if row else None
 
         cmd = (
             f"sshpass -p '{SSH_PASSWORD}' ssh {SSH_OPTIONS} {SSH_USER}@{ip} "
@@ -116,25 +132,34 @@ def get_ansible_mark(ip: str):
         result = subprocess.run(
             cmd, shell=True, capture_output=True, text=True, timeout=10
         )
-        if result.returncode != 0:
-            if "No such file" in result.stderr:
+        if result.returncode == 0:
+            try:
+                data = json.loads(result.stdout)
+                data['status'] = 'ok'
+                return data
+            except json.JSONDecodeError as e:
                 return {
-                    'status': 'none',
-                    'msg': 'Файл mark.json не найден',
+                    'status': 'error',
+                    'msg': f'Некорректный JSON в mark.json: {str(e)}',
                 }
-            return {'status': 'error', 'msg': f"SSH ошибка: {result.stderr.strip()}"}
-        try:
-            data = json.loads(result.stdout)
-            data['status'] = 'ok'
-            return data
-        except json.JSONDecodeError as e:
+
+        # SSH or file errors: fall back to DB if possible
+        if db_status in ('ok', 'failed') and db_updated:
+            return {'status': db_status, 'install_date': db_updated}
+
+        if "No such file" in result.stderr:
             return {
-                'status': 'error',
-                'msg': f'Некорректный JSON в mark.json: {str(e)}',
+                'status': 'none',
+                'msg': 'Файл mark.json не найден',
             }
+        return {'status': 'error', 'msg': f"SSH ошибка: {result.stderr.strip()}"}
     except subprocess.TimeoutExpired:
+        if db_status in ('ok', 'failed') and db_updated:
+            return {'status': db_status, 'install_date': db_updated}
         return {'status': 'error', 'msg': 'Таймаут подключения к хосту'}
     except Exception as e:
+        if db_status in ('ok', 'failed') and db_updated:
+            return {'status': db_status, 'install_date': db_updated}
         return {'status': 'error', 'msg': f'Внутренняя ошибка: {str(e)}'}
 
 
