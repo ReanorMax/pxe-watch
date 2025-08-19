@@ -11,7 +11,6 @@ from config import (
 )
 from . import api_bp
 from services import read_file, write_file
-from services.preseed_generator import generate_preseed
 import os
 import shutil
 
@@ -95,22 +94,6 @@ def api_preseed_activate():
     except OSError as e:
         logging.error(f'Ошибка при активации preseed файла: {e}')
         return jsonify({'status': 'error', 'msg': str(e)}), 500
-
-
-@api_bp.route('/preseed/generate', methods=['POST'])
-def api_preseed_generate():
-    data = request.get_json(force=True)
-    try:
-        disks = int(data.get('disks', 1))
-        size_gb = int(data.get('size_gb', 10))
-        name = data.get('name') or _active_preseed_name()
-        content = generate_preseed(disks, size_gb)
-        path = _preseed_file_path(name)
-        write_file(path, content)
-        return jsonify({'status': 'ok', 'content': content}), 200
-    except Exception as e:
-        logging.error(f'Ошибка генерации preseed: {e}')
-        return jsonify({'status': 'error', 'msg': str(e)}), 400
 
 
 @api_bp.route('/ipxe', methods=['GET'])
