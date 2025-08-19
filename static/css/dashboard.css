@@ -117,39 +117,6 @@
     .btn-logtail:hover { background: #7b1fa2; }
     .btn-logtail i { font-size: 0.9em; }
     .container { padding: 24px; }
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 16px;
-      margin-bottom: 24px;
-    }
-    .stat-card {
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 16px;
-      box-shadow: var(--table-shadow);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-    }
-    .stat-number {
-      font-size: 2em;
-      font-weight: 600;
-    }
-    .stat-label {
-      margin-top: 4px;
-      font-size: 0.9em;
-      color: var(--grey);
-      text-transform: uppercase;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .stat-card.online .stat-number { color: var(--green); }
-    .stat-card.installing .stat-number { color: var(--orange); }
-    .stat-card.completed .stat-number { color: var(--accent); }
     table {
       width: 100%;
       border-collapse: collapse;

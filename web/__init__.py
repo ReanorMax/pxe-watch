@@ -62,17 +62,9 @@ def dashboard():
             'online': is_online,
             'details': details or '',
         })
-    total_hosts = len(hosts)
-    online_hosts = sum(1 for h in hosts if h['online'])
-    installing_hosts = sum(1 for row in rows if row[2] == 'debian_install')
-    completed_hosts = sum(1 for h in hosts if h['stage'].startswith('✅'))
     return render_template(
         'dashboard.html',
         hosts=hosts,
         stage_labels=STAGE_LABELS,
         ansible_files_path=ANSIBLE_FILES_DIR,
-        total_hosts=total_hosts,
-        online_hosts=online_hosts,
-        installing_hosts=installing_hosts,
-        completed_hosts=completed_hosts,
     )
