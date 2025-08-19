@@ -192,7 +192,7 @@ def api_ansible_run():
         # returned successfully.  We filter them out so that such warnings do
         # not trigger an error response.
         warning_re = re.compile(
-            r"^\[WARNING\]: Collection .* does not support Ansible version"
+            r"^(?:\[WARNING\]|WARNING): Collection .* does not support Ansible"
         )
         stderr_lines = result.stderr.splitlines() if result.stderr else []
         non_warning_lines = [line for line in stderr_lines if not warning_re.match(line)]
