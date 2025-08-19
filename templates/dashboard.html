@@ -117,8 +117,16 @@
   <!-- Модальные окна -->
   <div class="modal" id="preseed-modal">
     <header><span>preseed.cfg</span><button class="btn close-modal" data-modal="preseed-modal"><i class="fa fa-times"></i></button></header>
-    <textarea id="preseed-content"></textarea>
-    <div class="controls"><button class="btn" id="save-preseed"><i class="fa fa-save"></i> Сохранить</button></div>
+    <div class="preseed-top-controls">
+      <select id="preseed-select"></select>
+      <button class="btn" id="preseed-add"><i class="fa fa-plus"></i></button>
+      <button class="btn" id="preseed-activate"><i class="fa fa-check"></i> Активировать</button>
+    </div>
+    <textarea id="preseed-content" readonly></textarea>
+    <div class="controls">
+      <button class="btn" id="edit-preseed-btn"><i class="fa fa-edit"></i> Редактировать</button>
+      <button class="btn" id="save-preseed" style="display:none"><i class="fa fa-save"></i> Сохранить</button>
+    </div>
   </div>
   <div class="modal" id="dnsmasq-modal">
     <header><span>DNSMasq DHCP / iPXE</span><button class="btn close-modal" data-modal="dnsmasq-modal"><i class="fa fa-times"></i></button></header>

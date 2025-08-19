@@ -120,7 +120,6 @@
       }
     }
     [
-      { btn: 'edit-preseed', modal: 'preseed-modal', api: '/api/preseed', elem: 'preseed-content' },
       { btn: 'edit-ipxe', modal: 'ipxe-modal', api: '/api/ipxe', elem: 'ipxe-content' },
       { btn: 'edit-dnsmasq', modal: 'dnsmasq-modal', api: '/api/dnsmasq', elem: 'dnsmasq-content' },
       { btn: 'edit-inventory', modal: 'inventory-modal', api: '/api/ansible/inventory', elem: 'inventory-content' },
@@ -145,11 +144,107 @@
         saveContentToApi(apiPath, contentId, onSuccess, isPlaybook);
       };
     }
-    setupSaveButton('save-preseed', '/api/preseed', 'preseed-content', () => closeModal(document.getElementById('preseed-modal')));
     setupSaveButton('save-ipxe', '/api/ipxe', 'ipxe-content', () => closeModal(document.getElementById('ipxe-modal')));
     setupSaveButton('save-dnsmasq', '/api/dnsmasq', 'dnsmasq-content', () => closeModal(document.getElementById('dnsmasq-modal')));
     setupSaveButton('save-playbook', '/api/ansible/playbook', null, () => closeModal(document.getElementById('playbook-modal')), true);
     setupSaveButton('save-inventory', '/api/ansible/inventory', 'inventory-content', () => closeModal(document.getElementById('inventory-modal')));
+
+    document.getElementById('edit-preseed').onclick = openPreseedModal;
+
+    async function openPreseedModal() {
+      try {
+        const res = await fetch('/api/preseed/list');
+        const data = await res.json();
+        const select = document.getElementById('preseed-select');
+        select.innerHTML = '';
+        data.files.forEach(name => {
+          const opt = document.createElement('option');
+          opt.value = name;
+          opt.textContent = name;
+          if (name === data.active) opt.selected = true;
+          select.appendChild(opt);
+        });
+        await loadPreseedContent();
+        setPreseedEdit(false);
+        openModal(document.getElementById('preseed-modal'));
+      } catch (e) {
+        alert('Ошибка загрузки preseed: ' + e.message);
+      }
+    }
+
+    async function loadPreseedContent() {
+      const name = document.getElementById('preseed-select').value;
+      if (!name) return;
+      const res = await fetch(`/api/preseed?name=${encodeURIComponent(name)}`);
+      const text = await res.text();
+      document.getElementById('preseed-content').value = text;
+    }
+
+    function setPreseedEdit(editing) {
+      const textarea = document.getElementById('preseed-content');
+      const saveBtn = document.getElementById('save-preseed');
+      const editBtn = document.getElementById('edit-preseed-btn');
+      textarea.readOnly = !editing;
+      saveBtn.style.display = editing ? 'inline-flex' : 'none';
+      editBtn.innerHTML = editing
+        ? '<i class="fa fa-times"></i> Отмена'
+        : '<i class="fa fa-edit"></i> Редактировать';
+    }
+
+    document.getElementById('preseed-select').onchange = () => {
+      loadPreseedContent();
+      setPreseedEdit(false);
+    };
+
+    document.getElementById('edit-preseed-btn').onclick = () => {
+      const textarea = document.getElementById('preseed-content');
+      if (textarea.readOnly) {
+        setPreseedEdit(true);
+      } else {
+        setPreseedEdit(false);
+        loadPreseedContent();
+      }
+    };
+
+    document.getElementById('save-preseed').onclick = () => {
+      const name = document.getElementById('preseed-select').value;
+      saveContentToApi(`/api/preseed?name=${encodeURIComponent(name)}`, 'preseed-content', () => setPreseedEdit(false));
+    };
+
+    document.getElementById('preseed-activate').onclick = async () => {
+      const name = document.getElementById('preseed-select').value;
+      try {
+        const res = await fetch('/api/preseed/activate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name })
+        });
+        if (!res.ok) throw new Error((await res.json()).msg);
+        alert('Активирован.');
+        openPreseedModal();
+      } catch (e) {
+        alert('Ошибка активации: ' + e.message);
+      }
+    };
+
+    document.getElementById('preseed-add').onclick = async () => {
+      const name = prompt('Имя файла (например, custom.cfg):');
+      if (!name) return;
+      try {
+        const res = await fetch('/api/preseed/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name })
+        });
+        if (!res.ok) throw new Error((await res.json()).msg);
+        await openPreseedModal();
+        document.getElementById('preseed-select').value = name;
+        await loadPreseedContent();
+        setPreseedEdit(true);
+      } catch (e) {
+        alert('Ошибка создания: ' + e.message);
+      }
+    };
     let currentFilesPath = '';
     const baseFilesPath = document.getElementById('files-modal-title').textContent.replace(/^Файлы\s*/, '');
     async function loadFilesList() {

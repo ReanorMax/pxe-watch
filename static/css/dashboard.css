@@ -154,6 +154,8 @@
     #overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; z-index: 1000; }
     .modal { position: fixed; top: 0; right: 0; width: 50vw; height: 100vh; background: var(--bg); z-index: 1001; display: none; flex-direction: column; box-shadow: -4px 0 12px rgba(0,0,0,0.3); }
     .modal header { background: var(--accent); color: #fff; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+    #preseed-modal .preseed-top-controls { padding: 12px; display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+    #preseed-modal .preseed-top-controls select { flex: 1; }
     #playbook-editor-container { flex: 1; overflow: hidden; position: relative; }
     #playbook-editor { height: 100%; width: 100%; }
     .CodeMirror { height: 100% !important; font-family: 'Fira Code', monospace !important; font-size: 14px !important; line-height: 1.5 !important; margin: 0 !important; padding: 0 !important; }
