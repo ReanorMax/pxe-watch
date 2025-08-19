@@ -463,6 +463,9 @@
                   <button id="clearBtn" class="btn btn-secondary flex-fill" title="Clear log panel">
                     <i class="fas fa-trash me-1"></i>Clear
                   </button>
+                  <button id="loadMoreBtn" class="btn btn-outline-info flex-fill" title="Load more lines">
+                    <i class="fas fa-plus me-1"></i>More
+                  </button>
                 </div>
               </div>
             </div>
@@ -483,7 +486,10 @@
               </div>
             </div>
           </div>
-          <div style="position: relative;">
+          <button id="toggleLogPanelBtn" class="btn btn-outline-secondary btn-sm mb-2">
+            <i class="fas fa-eye-slash me-1"></i>Hide Log
+          </button>
+          <div id="logPanelContainer" style="position: relative;">
             <button id="autoScrollBtn" class="btn btn-sm btn-primary auto-scroll-btn">
               <i class="fas fa-arrow-down me-1"></i>Scroll to Bottom
             </button>
@@ -492,7 +498,12 @@
         </div>
 
         <div id="journalTab" class="tab-content">
-          <h3>Journal Service Logs</h3>
+          <div class="d-flex justify-content-between align-items-center">
+            <h3>Journal Service Logs</h3>
+            <button id="toggleJournalPanelBtn" class="btn btn-outline-secondary btn-sm">
+              <i class="fas fa-eye-slash"></i>
+            </button>
+          </div>
           <div class="card mb-3">
             <div class="card-body">
               <div class="row g-2">
@@ -527,7 +538,7 @@
                     </button>
                   </div>
                 </div>
-                <div class="col-md-8">
+                <div class="col-md-6">
                   <label class="form-label">Поиск (grep)</label>
                   <div class="input-group">
                     <input type="text" id="journalGrep" class="form-control" placeholder="Введите текст для поиска...">
@@ -539,6 +550,11 @@
                 <div class="col-md-2">
                   <label for="journalLinesCount" class="form-label">Строк</label>
                   <input id="journalLinesCount" type="number" class="form-control form-control-sm" value="100" min="1" max="10000">
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                  <button id="loadMoreJournalBtn" class="btn btn-secondary btn-sm w-100" onclick="loadMoreJournal()">
+                    <i class="fas fa-plus me-1"></i>More
+                  </button>
                 </div>
                 <div class="col-md-2 d-flex align-items-end">
                   <button id="followJournalBtn" class="btn btn-success btn-sm w-100" onclick="toggleJournalFollow()">
@@ -600,7 +616,7 @@
             </div>
           </div>
 
-          <div style="position: relative;">
+          <div id="journalPanelContainer" style="position: relative;">
             <button id="autoScrollJournalBtn" class="btn btn-sm btn-primary auto-scroll-btn" style="display: none;">
               <i class="fas fa-arrow-down me-1"></i>Scroll to Bottom
             </button>
@@ -626,6 +642,8 @@ let journalLinesLimit = 100;
 let journalIncludeFilters = [];
 let journalExcludeFilters = [];
 let journalColorRules = [];
+let logPanelCollapsed = false;
+let journalPanelCollapsed = false;
 
 async function api(url, opts={}) {
   const res = await fetch(url, opts);
@@ -855,6 +873,26 @@ function scrollToBottom() {
   document.getElementById('autoScrollBtn').style.display = 'none';
 }
 
+function loadMoreLogs() {
+  if (isFollowing) toggleFollow();
+  const input = document.getElementById('linesCount');
+  input.value = parseInt(input.value) + 100;
+  tail();
+}
+
+function toggleLogPanel() {
+  const container = document.getElementById('logPanelContainer');
+  const btn = document.getElementById('toggleLogPanelBtn');
+  logPanelCollapsed = !logPanelCollapsed;
+  if (logPanelCollapsed) {
+    container.style.display = 'none';
+    btn.innerHTML = '<i class="fas fa-eye me-1"></i>Show Log';
+  } else {
+    container.style.display = 'block';
+    btn.innerHTML = '<i class="fas fa-eye-slash me-1"></i>Hide Log';
+  }
+}
+
 async function refreshServiceList() {
   if (!selectedHost) return;
   const select = document.getElementById('serviceSelect');
@@ -1067,6 +1105,26 @@ function journalScrollToBottom() {
   document.getElementById('autoScrollJournalBtn').style.display = 'none';
 }
 
+function loadMoreJournal() {
+  if (isJournalFollowing) toggleJournalFollow();
+  const input = document.getElementById('journalLinesCount');
+  input.value = parseInt(input.value) + 100;
+  loadJournalLogs();
+}
+
+function toggleJournalPanel() {
+  const container = document.getElementById('journalPanelContainer');
+  const btn = document.getElementById('toggleJournalPanelBtn');
+  journalPanelCollapsed = !journalPanelCollapsed;
+  if (journalPanelCollapsed) {
+    container.style.display = 'none';
+    btn.innerHTML = '<i class="fas fa-eye"></i>';
+  } else {
+    container.style.display = 'block';
+    btn.innerHTML = '<i class="fas fa-eye-slash"></i>';
+  }
+}
+
 // Event bindings
 
 document.getElementById('savePathBtn').onclick = savePath;
@@ -1075,9 +1133,13 @@ document.getElementById('searchBtn').onclick = () => tail();
 document.getElementById('followBtn').onclick = toggleFollow;
 document.getElementById('pauseBtn').onclick = toggleFollow;
 document.getElementById('clearBtn').onclick = clearLog;
+document.getElementById('loadMoreBtn').onclick = loadMoreLogs;
+document.getElementById('toggleLogPanelBtn').onclick = toggleLogPanel;
 document.getElementById('autoScrollBtn').onclick = scrollToBottom;
 document.getElementById('addJournalColorRuleBtn').onclick = addJournalColorRule;
 document.getElementById('autoScrollJournalBtn').onclick = journalScrollToBottom;
+document.getElementById('loadMoreJournalBtn').onclick = loadMoreJournal;
+document.getElementById('toggleJournalPanelBtn').onclick = toggleJournalPanel;
 
 document.getElementById('grep').addEventListener('keyup', e => { if (e.key === 'Enter') tail(); });
 document.getElementById('excludePattern').addEventListener('keyup', e => { if (e.key === 'Enter') tail(); });
