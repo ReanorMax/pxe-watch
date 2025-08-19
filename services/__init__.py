@@ -4,7 +4,6 @@ import subprocess
 import datetime
 import re
 import json
-from typing import Optional
 from flask import jsonify, abort, request
 
 from config import (
@@ -75,22 +74,8 @@ def list_files_in_dir(directory: str):
     return file_list
 
 
-def set_playbook_status(ip: str, status: str, updated: Optional[str] = None) -> None:
-    """Store Ansible playbook status for host.
-
-    Parameters
-    ----------
-    ip: str
-        Target host IP address.
-    status: str
-        Status string (e.g. ``running``, ``ok``, ``failed``).
-    updated: Optional[str]
-        Timestamp in ``'%Y-%m-%d %H:%M:%S'`` format. If omitted the current
-        UTC time is used.
-    """
-
-    if updated is None:
-        updated = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+def set_playbook_status(ip: str, status: str) -> None:
+    """Store Ansible playbook status for host."""
     try:
         with get_db() as db:
             db.execute(
@@ -101,11 +86,9 @@ def set_playbook_status(ip: str, status: str, updated: Optional[str] = None) -> 
                   status = excluded.status,
                   updated = excluded.updated
                 ''',
-                (ip, status, updated),
+                (ip, status, datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')),
             )
-        logging.info(
-            f"Статус Ansible для {ip} установлен в '{status}' в {updated}"
-        )
+        logging.info(f"Статус Ansible для {ip} установлен в '{status}'")
     except Exception as e:
         logging.error(
             f"Ошибка при установке статуса Ansible для {ip}: {e}", exc_info=True
@@ -113,22 +96,16 @@ def set_playbook_status(ip: str, status: str, updated: Optional[str] = None) -> 
 
 
 def get_ansible_mark(ip: str):
-    """Fetch ``/opt/ansible_mark.json`` from remote host via SSH.
-
-    Falls back to the locally stored ``playbook_status`` information when the
-    remote mark file is unavailable. This allows the dashboard to display
-    completion timestamps even for hosts provisioned before the dashboard was
-    introduced.
-    """
+    """Fetch /opt/ansible_mark.json from remote host via SSH."""
     if not re.match(r'^\d{1,3}(\.\d{1,3}){3}$', ip) or ip == '—':
         return {'status': 'error', 'msg': 'Invalid IP'}
     try:
+        # First check local playbook_status to see if Ansible is running
         with get_db() as db:
             row = db.execute(
-                "SELECT status, updated FROM playbook_status WHERE ip = ?",
+                "SELECT status FROM playbook_status WHERE ip = ?",
                 (ip,),
             ).fetchone()
-
         if row and row['status'] == 'running':
             return {'status': 'pending', 'msg': 'Ansible playbook is running'}
 
@@ -139,49 +116,23 @@ def get_ansible_mark(ip: str):
         result = subprocess.run(
             cmd, shell=True, capture_output=True, text=True, timeout=10
         )
-        if result.returncode == 0:
-            try:
-                data = json.loads(result.stdout)
-                data['status'] = 'ok'
-                # If install_date missing, fall back to DB record if available
-                if 'install_date' not in data and row and row['status'] == 'ok':
-                    data['install_date'] = row['updated']
-                return data
-            except json.JSONDecodeError as e:
-                logging.warning(
-                    f"Некорректный JSON в mark.json для {ip}: {e}"
-                )
-                if row and row['status'] in {'ok', 'failed'}:
-                    return {
-                        'status': row['status'],
-                        'install_date': row['updated'],
-                        'msg': 'Некорректный JSON в mark.json',
-                    }
+        if result.returncode != 0:
+            if "No such file" in result.stderr:
                 return {
-                    'status': 'error',
-                    'msg': f'Некорректный JSON в mark.json: {str(e)}',
+                    'status': 'none',
+                    'msg': 'Файл mark.json не найден',
                 }
-
-        # SSH returned non-zero exit code
-        if row and row['status'] in {'ok', 'failed'}:
+            return {'status': 'error', 'msg': f"SSH ошибка: {result.stderr.strip()}"}
+        try:
+            data = json.loads(result.stdout)
+            data['status'] = 'ok'
+            return data
+        except json.JSONDecodeError as e:
             return {
-                'status': row['status'],
-                'install_date': row['updated'],
+                'status': 'error',
+                'msg': f'Некорректный JSON в mark.json: {str(e)}',
             }
-        if "No such file" in result.stderr:
-            return {
-                'status': 'none',
-                'msg': 'Файл mark.json не найден',
-            }
-        return {'status': 'error', 'msg': f"SSH ошибка: {result.stderr.strip()}"}
-
     except subprocess.TimeoutExpired:
-        if row and row['status'] in {'ok', 'failed'}:
-            return {
-                'status': row['status'],
-                'install_date': row['updated'],
-                'msg': 'Таймаут подключения к хосту',
-            }
         return {'status': 'error', 'msg': 'Таймаут подключения к хосту'}
     except Exception as e:
         return {'status': 'error', 'msg': f'Внутренняя ошибка: {str(e)}'}
