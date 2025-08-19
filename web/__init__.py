@@ -62,17 +62,9 @@ def dashboard():
             'online': is_online,
             'details': details or '',
         })
-    history_rows = db.execute(
-        '''
-        SELECT mac, task_name, status, started_at, finished_at
-        FROM ansible_tasks ORDER BY started_at DESC LIMIT 20
-        '''
-    ).fetchall()
-    history = [dict(r) for r in history_rows]
     return render_template(
         'dashboard.html',
         hosts=hosts,
         stage_labels=STAGE_LABELS,
         ansible_files_path=ANSIBLE_FILES_DIR,
-        history=history,
     )
