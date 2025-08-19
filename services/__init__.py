@@ -99,16 +99,19 @@ def get_ansible_mark(ip: str):
     """Fetch /opt/ansible_mark.json from remote host via SSH."""
     if not re.match(r'^\d{1,3}(\.\d{1,3}){3}$', ip) or ip == '—':
         return {'status': 'error', 'msg': 'Invalid IP'}
-    try:
-        # First check local playbook_status to see if Ansible is running
-        with get_db() as db:
-            row = db.execute(
-                "SELECT status FROM playbook_status WHERE ip = ?",
-                (ip,),
-            ).fetchone()
-        if row and row['status'] == 'running':
-            return {'status': 'pending', 'msg': 'Ansible playbook is running'}
 
+    # Load last known status from the local database
+    with get_db() as db:
+        row = db.execute(
+            "SELECT status, updated FROM playbook_status WHERE ip = ?",
+            (ip,),
+        ).fetchone()
+
+    if row and row['status'] == 'running':
+        return {'status': 'pending', 'msg': 'Ansible playbook is running'}
+
+    error_msg = None
+    try:
         cmd = (
             f"sshpass -p '{SSH_PASSWORD}' ssh {SSH_OPTIONS} {SSH_USER}@{ip} "
             "'cat /opt/ansible_mark.json'"
@@ -116,26 +119,30 @@ def get_ansible_mark(ip: str):
         result = subprocess.run(
             cmd, shell=True, capture_output=True, text=True, timeout=10
         )
-        if result.returncode != 0:
+        if result.returncode == 0:
+            try:
+                data = json.loads(result.stdout)
+                data['status'] = 'ok'
+                return data
+            except json.JSONDecodeError as e:
+                error_msg = f'Некорректный JSON в mark.json: {str(e)}'
+        else:
             if "No such file" in result.stderr:
-                return {
-                    'status': 'none',
-                    'msg': 'Файл mark.json не найден',
-                }
-            return {'status': 'error', 'msg': f"SSH ошибка: {result.stderr.strip()}"}
-        try:
-            data = json.loads(result.stdout)
-            data['status'] = 'ok'
-            return data
-        except json.JSONDecodeError as e:
-            return {
-                'status': 'error',
-                'msg': f'Некорректный JSON в mark.json: {str(e)}',
-            }
+                error_msg = 'Файл mark.json не найден'
+            else:
+                error_msg = f"SSH ошибка: {result.stderr.strip()}"
     except subprocess.TimeoutExpired:
-        return {'status': 'error', 'msg': 'Таймаут подключения к хосту'}
+        error_msg = 'Таймаут подключения к хосту'
     except Exception as e:
-        return {'status': 'error', 'msg': f'Внутренняя ошибка: {str(e)}'}
+        error_msg = f'Внутренняя ошибка: {str(e)}'
+
+    # Fallback to stored status if mark.json is unavailable
+    if row and row['status'] in ('ok', 'failed'):
+        return {'status': row['status'], 'install_date': row['updated']}
+
+    if error_msg == 'Файл mark.json не найден':
+        return {'status': 'none', 'msg': error_msg}
+    return {'status': 'error', 'msg': error_msg or 'Неизвестная ошибка'}
 
 
 def create_file_api_handlers(file_path_getter, allow_missing_get: bool = False, name_prefix: str = ""):

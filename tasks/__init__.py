@@ -70,7 +70,7 @@ def parse_ansible_logs():
         logging.info("Начинаем анализ логов Ansible...")
         try:
             result = subprocess.run(
-                ['journalctl', '-u', ANSIBLE_SERVICE_NAME, '-n', '500', '--no-pager', '--since', '5 minutes ago'],
+                ['journalctl', '-u', ANSIBLE_SERVICE_NAME, '-n', '1000', '--no-pager'],
                 capture_output=True,
                 text=True,
                 check=True,
