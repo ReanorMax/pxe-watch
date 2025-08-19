@@ -19,6 +19,7 @@ from services import (
     list_files_in_dir,
     get_ansible_mark,
     create_file_api_handlers,
+    set_playbook_status,
 )
 
 
@@ -138,6 +139,12 @@ def api_ansible_run():
                     ''',
                     (mac, 'playbook.yml', 'running', 0, 10, started),
                 )
+                ip_row = db.execute(
+                    "SELECT ip FROM hosts WHERE mac = ?",
+                    (mac,),
+                ).fetchone()
+                if ip_row and ip_row['ip']:
+                    set_playbook_status(ip_row['ip'], 'running')
         result = subprocess.run(
             ["ansible-playbook", ANSIBLE_PLAYBOOK, "-i", ANSIBLE_INVENTORY],
             capture_output=True,

@@ -100,6 +100,15 @@ def get_ansible_mark(ip: str):
     if not re.match(r'^\d{1,3}(\.\d{1,3}){3}$', ip) or ip == '—':
         return {'status': 'error', 'msg': 'Invalid IP'}
     try:
+        # First check local playbook_status to see if Ansible is running
+        with get_db() as db:
+            row = db.execute(
+                "SELECT status FROM playbook_status WHERE ip = ?",
+                (ip,),
+            ).fetchone()
+        if row and row['status'] == 'running':
+            return {'status': 'pending', 'msg': 'Ansible playbook is running'}
+
         cmd = (
             f"sshpass -p '{SSH_PASSWORD}' ssh {SSH_OPTIONS} {SSH_USER}@{ip} "
             "'cat /opt/ansible_mark.json'"
@@ -110,8 +119,8 @@ def get_ansible_mark(ip: str):
         if result.returncode != 0:
             if "No such file" in result.stderr:
                 return {
-                    'status': 'pending',
-                    'msg': 'Файл mark.json не найден (Ansible не завершил установку)',
+                    'status': 'none',
+                    'msg': 'Файл mark.json не найден',
                 }
             return {'status': 'error', 'msg': f"SSH ошибка: {result.stderr.strip()}"}
         try:
