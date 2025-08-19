@@ -165,9 +165,6 @@
     .modal textarea:not(#playbook-content) { flex: 1; padding: 12px; font-family: monospace; font-size: 13px; background: #1e1e1e; color: #eee; border: none; resize: none; }
     .controls { padding: 12px; display: flex; gap: 8px; justify-content: flex-end; flex-shrink: 0; }
     .log-viewer { flex: 1; background: #1e1e1e; color: #ddd; font-family: monospace; font-size: 14px; padding: 12px; overflow-y: auto; white-space: pre-wrap; border-top: 1px solid var(--border); line-height: 1.6; }
-    .log-controls { display:flex; gap:8px; align-items:center; margin:8px 0; }
-    .log-controls input { width:70px; padding:4px; font-family: monospace; }
-    #ansible-log.collapsed { display:none; }
     .file-list-simple-container { flex: 1; padding: 16px; overflow-y: auto; }
     .file-simple-table { width: 100%; border-collapse: collapse; background: var(--bg); color: var(--text); font-size: 0.9em; }
     .file-simple-table th, .file-simple-table td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); }

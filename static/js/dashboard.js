@@ -321,38 +321,25 @@
     document.getElementById('toggle-ansible').onclick = () => {
       const p = document.getElementById('ansible-panel');
       p.style.display = p.style.display === 'none' ? 'block' : 'none';
-      if (p.style.display === 'block') loadAnsibleLog(true);
+      if (p.style.display === 'block') loadAnsibleLog();
     };
-    const ansibleLogEl = document.getElementById('ansible-log');
-    let ansibleLogLines = 100;
-    document.getElementById('ansible-log-collapse').onclick = () => {
-      ansibleLogEl.classList.toggle('collapsed');
-    };
-    document.getElementById('ansible-log-refresh').onclick = () => loadAnsibleLog(true);
-    document.getElementById('ansible-log-lines').onchange = (e) => {
-      const val = parseInt(e.target.value, 10);
-      ansibleLogLines = !isNaN(val) ? val : 100;
-      loadAnsibleLog(true);
-    };
-    document.getElementById('ansible-log-top').onclick = () => ansibleLogEl.scrollTop = 0;
-    document.getElementById('ansible-log-bottom').onclick = () => ansibleLogEl.scrollTop = ansibleLogEl.scrollHeight;
-    async function loadAnsibleLog(forceScroll = false) {
-      if (ansibleLogEl.classList.contains('collapsed')) return;
+    async function loadAnsibleLog() {
       try {
-        const res = await fetch(`/api/logs/ansible?lines=${ansibleLogLines}`);
+        const res = await fetch('/api/logs/ansible');
         const lines = await res.json();
-        ansibleLogEl.innerHTML = '';
+        const logEl = document.getElementById('ansible-log');
+        logEl.innerHTML = '';
         lines.forEach(line => {
             const div = document.createElement('div');
             div.innerHTML = line;
-            ansibleLogEl.appendChild(div);
+            logEl.appendChild(div);
         });
-        if (forceScroll) setTimeout(() => ansibleLogEl.scrollTop = ansibleLogEl.scrollHeight, 0);
+        setTimeout(() => logEl.scrollTop = logEl.scrollHeight, 0);
       } catch (e) {
-        ansibleLogEl.innerHTML = `<span style="color:#ff6b6b">Ошибка: ${e.message}</span>`;
+        document.getElementById('ansible-log').innerHTML = `<span style="color:#ff6b6b">Ошибка: ${e.message}</span>`;
       }
     }
-    setInterval(() => loadAnsibleLog(), 3000);
+    setInterval(loadAnsibleLog, 3000);
     document.getElementById('hosts-table-body').addEventListener('click', async (e) => {
       if (e.target.closest('.btn-reboot')) {
         const ip = e.target.closest('.btn-reboot').dataset.ip;
