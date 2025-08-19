@@ -175,7 +175,9 @@
                 listBody.appendChild(upTr);
             }
             if (data.files.length === 0) {
-                listBody.innerHTML += '<tr><td colspan="3" style="text-align: center; font-style: italic;">Файлы не найдены</td></tr>';
+                const emptyTr = document.createElement('tr');
+                emptyTr.innerHTML = '<td colspan="3" style="text-align: center; font-style: italic;">Файлы не найдены</td>';
+                listBody.appendChild(emptyTr);
                 return;
             }
             data.files.forEach(file => {
