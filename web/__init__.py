@@ -45,15 +45,21 @@ def dashboard():
         if ansible_status == 'ok':
             try:
                 install_date_str = ansible_result['install_date']
-                clean_date = install_date_str.split('+')[0].split('Z')[0]
-                install_dt = datetime.datetime.fromisoformat(clean_date)
+                install_dt = datetime.datetime.fromisoformat(
+                    install_date_str.replace('Z', '+00:00')
+                )
+                install_dt = install_dt.astimezone(
+                    datetime.timezone.utc
+                ) + LOCAL_OFFSET
                 date_str = install_dt.strftime('%d.%m.%Y %H:%M')
                 version = ansible_result.get('version', '')
                 stage_label = f'✅ Ansible: {date_str}'
                 if version:
                     stage_label += f' (v{version})'
             except Exception as e:
-                logging.warning(f"Ошибка парсинга даты в ansible_mark.json для {ip}: {e}")
+                logging.warning(
+                    f"Ошибка парсинга даты в ansible_mark.json для {ip}: {e}"
+                )
                 stage_label = '✅ Ansible: завершён (дата неизвестна)'
         elif ansible_status == 'pending':
             stage_label = STAGE_LABELS.get(stage, '—') + ' ⏳ Ansible: в процессе'
