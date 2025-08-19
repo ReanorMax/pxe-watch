@@ -136,6 +136,11 @@ def get_ansible_mark(ip: str):
             try:
                 data = json.loads(result.stdout)
                 data['status'] = 'ok'
+                # Replace timestamp with locally recorded value to avoid
+                # discrepancies caused by incorrect time settings on the host
+                # where ``ansible_mark.json`` is generated.
+                if db_updated:
+                    data['install_date'] = db_updated
                 return data
             except json.JSONDecodeError as e:
                 return {
