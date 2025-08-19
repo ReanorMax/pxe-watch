@@ -47,7 +47,15 @@
       <button class="btn" id="edit-playbook"><i class="fa fa-file-code"></i> playbook.yml</button>
       <button class="btn" id="manage-files"><i class="fa fa-folder"></i> Файлы</button>
     </div>
-    <h4><i class="fa fa-terminal"></i> Журнал выполнения Ansible</h4>
+    <div class="log-controls">
+      <h4 style="flex:1;"><i class="fa fa-terminal"></i> Журнал выполнения Ansible</h4>
+      <select id="ansible-log-limit">
+        <option value="50">50</option>
+        <option value="100" selected>100</option>
+        <option value="200">200</option>
+      </select>
+      <button class="btn" id="collapse-ansible-log" title="Свернуть журнал"><i class="fa fa-chevron-up"></i></button>
+    </div>
     <div class="log-viewer" id="ansible-log"></div>
   </div>
   <div class="container">
