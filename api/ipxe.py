@@ -11,6 +11,7 @@ from config import (
 )
 from . import api_bp
 from services import read_file, write_file
+from services.preseed import update_preseed_disks
 import os
 import shutil
 
@@ -51,6 +52,21 @@ def api_preseed_post():
         return jsonify({'status': 'ok'}), 200
     except IOError as e:
         logging.error(f'Ошибка при записи preseed файла: {e}')
+        return jsonify({'status': 'error', 'msg': str(e)}), 500
+
+
+@api_bp.route('/preseed/generate', methods=['POST'])
+def api_preseed_generate():
+    data = request.get_json(force=True)
+    name = request.args.get('name') or _active_preseed_name()
+    disk_count = int(data.get('disk_count', 1))
+    disk_size_gb = int(data.get('disk_size_gb', 10))
+    path = _preseed_file_path(name)
+    try:
+        content = update_preseed_disks(path, disk_count, disk_size_gb)
+        return jsonify({'status': 'ok', 'content': content}), 200
+    except Exception as e:
+        logging.error(f'Ошибка при генерации preseed: {e}')
         return jsonify({'status': 'error', 'msg': str(e)}), 500
 
 
