@@ -11,7 +11,6 @@ from config import (
 )
 from . import api_bp
 from services import read_file, write_file
-from services.preseed_generator import update_disk_layout
 import os
 import shutil
 
@@ -95,22 +94,6 @@ def api_preseed_activate():
     except OSError as e:
         logging.error(f'Ошибка при активации preseed файла: {e}')
         return jsonify({'status': 'error', 'msg': str(e)}), 500
-
-
-@api_bp.route('/preseed/generate', methods=['POST'])
-def api_preseed_generate():
-    """Modify disk layout inside an existing preseed file in-place."""
-    data = request.get_json(force=True)
-    try:
-        disks = int(data.get('disks', 1))
-        size = int(data.get('size_gb', 0))
-        name = data.get('name') or _active_preseed_name()
-        path = _preseed_file_path(name)
-        summary = update_disk_layout(path, disks, size)
-        return jsonify({'status': 'ok', 'summary': summary}), 200
-    except Exception as e:
-        logging.error(f'Ошибка генерации preseed: {e}')
-        return jsonify({'status': 'error', 'msg': str(e)}), 400
 
 
 @api_bp.route('/ipxe', methods=['GET'])
