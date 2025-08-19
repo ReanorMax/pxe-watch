@@ -115,8 +115,34 @@
     .btn-shutdown i { font-size: 0.9em; }
     .btn-logtail { background: var(--logtail); padding: 6px 10px; font-size: 0.85em; }
     .btn-logtail:hover { background: #7b1fa2; }
-    .btn-logtail i { font-size: 0.9em; }
-    .container { padding: 24px; }
+      .btn-logtail i { font-size: 0.9em; }
+      .stats-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        padding: 24px;
+      }
+      .stat-card {
+        flex: 1 1 180px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 16px 24px;
+        box-shadow: var(--table-shadow);
+      }
+      .stat-number {
+        font-size: 1.6em;
+        font-weight: 600;
+      }
+      .stat-title {
+        font-weight: 600;
+        margin-top: 8px;
+      }
+      .stat-subtitle {
+        color: var(--grey);
+        font-size: 0.85em;
+      }
+      .container { padding: 24px; }
     table {
       width: 100%;
       border-collapse: collapse;
