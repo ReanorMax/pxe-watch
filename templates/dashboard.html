@@ -48,6 +48,13 @@
       <button class="btn" id="manage-files"><i class="fa fa-folder"></i> Файлы</button>
     </div>
     <h4><i class="fa fa-terminal"></i> Журнал выполнения Ansible</h4>
+    <div class="log-controls">
+      <button class="btn" id="ansible-log-collapse" title="Свернуть/развернуть"><i class="fa fa-chevron-up"></i></button>
+      <label>Строк: <input type="number" id="ansible-log-lines" value="100" min="10" max="1000" step="10"></label>
+      <button class="btn" id="ansible-log-refresh" title="Обновить"><i class="fa fa-sync-alt"></i></button>
+      <button class="btn" id="ansible-log-top" title="В начало"><i class="fa fa-arrow-up"></i></button>
+      <button class="btn" id="ansible-log-bottom" title="В конец"><i class="fa fa-arrow-down"></i></button>
+    </div>
     <div class="log-viewer" id="ansible-log"></div>
   </div>
   <div class="container">
