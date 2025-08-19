@@ -125,9 +125,45 @@ def api_ansible_clients():
         return jsonify([dict(r) for r in rows])
 
 
+@api_bp.route('/ansible/tags', methods=['GET'])
+def api_ansible_tags():
+    """Return list of tags defined in the playbook."""
+    try:
+        result = subprocess.run(
+            [
+                "ansible-playbook",
+                ANSIBLE_PLAYBOOK,
+                "-i",
+                ANSIBLE_INVENTORY,
+                "--list-tags",
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        tags = set()
+        for line in result.stdout.splitlines():
+            match = re.search(r'TAGS:\s*\[([^\]]*)\]', line)
+            if match:
+                for tag in match.group(1).split(','):
+                    tag = tag.strip()
+                    if tag:
+                        tags.add(tag)
+        return jsonify({"tags": sorted(tags)})
+    except subprocess.CalledProcessError as e:
+        logging.error(f"Ошибка получения тегов Ansible: {e}")
+        msg = e.stderr or str(e)
+        return jsonify({"error": msg}), 500
+    except Exception as e:
+        logging.error(f"Ошибка получения тегов Ansible: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @api_bp.route('/ansible/run', methods=['POST'])
 def api_ansible_run():
     try:
+        payload = request.get_json(silent=True) or {}
+        tags = payload.get('tags') or []
         macs = get_macs_from_inventory()
         started = datetime.datetime.utcnow().isoformat()
         with get_db() as db:
@@ -145,11 +181,10 @@ def api_ansible_run():
                 ).fetchone()
                 if ip_row and ip_row['ip']:
                     set_playbook_status(ip_row['ip'], 'running')
-        result = subprocess.run(
-            ["ansible-playbook", ANSIBLE_PLAYBOOK, "-i", ANSIBLE_INVENTORY],
-            capture_output=True,
-            text=True,
-        )
+        cmd = ["ansible-playbook", ANSIBLE_PLAYBOOK, "-i", ANSIBLE_INVENTORY]
+        if tags:
+            cmd.extend(["--tags", ",".join(tags)])
+        result = subprocess.run(cmd, capture_output=True, text=True)
         ip_status_map = {}
         recap_started = False
         for line in result.stdout.splitlines():
