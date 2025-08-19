@@ -68,3 +68,7 @@ def dashboard():
         stage_labels=STAGE_LABELS,
         ansible_files_path=ANSIBLE_FILES_DIR,
     )
+
+@web_bp.route('/preseed-builder')
+def preseed_builder():
+    return render_template('preseed_builder.html')
