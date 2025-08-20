@@ -16,20 +16,43 @@ from services.registration import register_host
 from services import set_playbook_status
 
 
-SUMMARY_RE = re.compile(r"^(\S+)\s*:\s.*failed=(\d+).*unreachable=(\d+)")
+def parse_playbook_summary(output: str) -> dict[str, str]:
+    """Разобрать PLAY RECAP и вернуть статус по каждому хосту.
 
-
-def parse_playbook_summary(output: str):
-    """Разобрать PLAY RECAP и вернуть статус по каждому хосту."""
-    result = {}
+    ``ansible-playbook`` может выводить строки ``PLAY RECAP`` с полями в
+    произвольном порядке, например ``unreachable`` может идти до ``failed``.
+    Прежняя реализация опиралась на конкретный порядок и всегда возвращала
+    пустой результат, что оставляло статус ``running``.  Здесь мы разбираем
+    каждый токен и ищем значения ``failed`` и ``unreachable`` независимо от
+    их позиции.
+    """
+    result: dict[str, str] = {}
     if "PLAY RECAP" not in output:
         return result
+
     recap = output.split("PLAY RECAP", 1)[1]
-    for match in SUMMARY_RE.finditer(recap):
-        host = match.group(1)
-        failed = int(match.group(2))
-        unreachable = int(match.group(3))
-        result[host] = 'ok' if failed == 0 and unreachable == 0 else 'failed'
+    for line in recap.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        m = re.match(r"^(\S+)\s*:\s*(.*)$", line)
+        if not m:
+            continue
+        host, stats = m.groups()
+        failed = unreachable = None
+        for token in stats.split():
+            if token.startswith("failed="):
+                try:
+                    failed = int(token.split("=", 1)[1])
+                except ValueError:
+                    failed = None
+            elif token.startswith("unreachable="):
+                try:
+                    unreachable = int(token.split("=", 1)[1])
+                except ValueError:
+                    unreachable = None
+        if failed is not None and unreachable is not None:
+            result[host] = "ok" if failed == 0 and unreachable == 0 else "failed"
     return result
 
 
