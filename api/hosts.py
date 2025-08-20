@@ -1,6 +1,8 @@
 from flask import request, jsonify
 import subprocess
 import logging
+import threading
+import re
 
 from config import (
     SSH_PASSWORD,
@@ -11,6 +13,50 @@ from config import (
 )
 from . import api_bp
 from services.registration import register_host
+from services import set_playbook_status
+
+
+SUMMARY_RE = re.compile(r"^(\S+)\s*:\s.*failed=(\d+).*unreachable=(\d+)")
+
+
+def parse_playbook_summary(output: str):
+    """Разобрать PLAY RECAP и вернуть статус по каждому хосту."""
+    result = {}
+    if "PLAY RECAP" not in output:
+        return result
+    recap = output.split("PLAY RECAP", 1)[1]
+    for match in SUMMARY_RE.finditer(recap):
+        host = match.group(1)
+        failed = int(match.group(2))
+        unreachable = int(match.group(3))
+        result[host] = 'ok' if failed == 0 and unreachable == 0 else 'failed'
+    return result
+
+
+def run_playbook_async(ip: str) -> None:
+    """Запустить ansible-playbook в фоне и обновить статус в БД."""
+    set_playbook_status(ip, 'running')
+
+    def worker():
+        cmd = [
+            "ansible-playbook",
+            ANSIBLE_PLAYBOOK,
+            "-i",
+            ANSIBLE_INVENTORY,
+        ]
+        try:
+            proc = subprocess.run(cmd, capture_output=True, text=True)
+            summary = parse_playbook_summary(proc.stdout + '\n' + proc.stderr)
+            if summary:
+                for host_ip, status in summary.items():
+                    set_playbook_status(host_ip, status)
+            else:
+                set_playbook_status(ip, 'failed')
+        except Exception as e:
+            logging.error(f'Ошибка выполнения playbook: {e}')
+            set_playbook_status(ip, 'failed')
+
+    threading.Thread(target=worker, daemon=True).start()
 
 
 @api_bp.route('/register', methods=['GET', 'POST'])
@@ -27,12 +73,7 @@ def api_register():
         logging.error(f'Ошибка при регистрации хоста: {e}')
         return 'Error', 500
     try:
-        subprocess.Popen([
-            "ansible-playbook",
-            ANSIBLE_PLAYBOOK,
-            "-i",
-            ANSIBLE_INVENTORY,
-        ])
+        run_playbook_async(ip)
         logging.info(f'Ansible-playbook запущен для MAC {mac}')
     except Exception as e:
         logging.error(f'Ошибка запуска playbook: {e}')

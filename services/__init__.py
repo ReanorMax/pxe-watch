@@ -113,6 +113,25 @@ def sync_inventory_hosts() -> None:
     except Exception as e:
         logging.warning(f"Не удалось синхронизировать инвентарь: {e}")
 
+
+def set_playbook_status(ip: str, status: str) -> None:
+    """Сохранить статус выполнения playbook для указанного IP."""
+    try:
+        with get_db() as db:
+            now = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+            db.execute(
+                """
+                INSERT INTO playbook_status (ip, status, updated)
+                VALUES (?, ?, ?)
+                ON CONFLICT(ip) DO UPDATE SET
+                    status = excluded.status,
+                    updated = excluded.updated
+                """,
+                (ip, status, now),
+            )
+    except Exception as e:
+        logging.error(f"Ошибка обновления статуса playbook для {ip}: {e}")
+
 def get_ansible_mark(ip: str):
     """Fetch ``/opt/ansible_mark.json`` or fall back to stored status.
 
