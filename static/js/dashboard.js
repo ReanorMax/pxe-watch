@@ -47,60 +47,6 @@
         });
     }
     document.addEventListener('DOMContentLoaded', updatePortainerLinks);
-
-    async function refreshHosts() {
-      try {
-        const res = await fetch('/api/hosts/status');
-        if (!res.ok) throw new Error();
-        const data = await res.json();
-        const tbody = document.getElementById('hosts-table-body');
-        tbody.innerHTML = '';
-        data.hosts.forEach(h => {
-          const tr = document.createElement('tr');
-          tr.dataset.ip = h.ip;
-          tr.dataset.mac = h.mac;
-          tr.innerHTML = `
-            <td>${h.mac}</td>
-            <td>${h.ip}</td>
-            <td>${h.stage}</td>
-            <td><time datetime="${h.last}">${h.last}</time></td>
-            <td class="status ${h.online ? 'online' : 'offline'}">
-              <i class="fa fa-circle"></i>
-              <span>${h.online ? 'Online' : 'Offline'}</span>
-            </td>
-            <td>
-              <a class="btn-portainer portainer-link" href="http://${h.ip}:9000" target="_blank" rel="noopener noreferrer" title="Portainer" style="display: ${h.ip && h.ip !== '—' ? 'inline-flex' : 'none'};">
-                <i class="fab fa-docker"></i> Portainer
-              </a>
-            </td>
-            <td class="actions-cell">
-              <button class="btn-wol" data-mac="${h.mac}" title="Включить (Wake-on-LAN)">
-                <i class="fas fa-plug"></i> WOL
-              </button>
-              <button class="btn-shutdown" data-ip="${h.ip}" title="Выключить">
-                <i class="fas fa-power-off"></i> Shutdown
-              </button>
-              <button class="btn-reboot" data-ip="${h.ip}" title="Перезагрузить">
-                <i class="fa fa-sync-alt"></i> reboot
-              </button>
-            </td>
-          `;
-          tbody.appendChild(tr);
-        });
-        document.querySelector('.stat-card.total .stat-number').textContent = data.total_hosts;
-        document.querySelector('.stat-card.online .stat-number').textContent = data.online_hosts;
-        document.querySelector('.stat-card.installing .stat-number').textContent = data.installing_hosts;
-        document.querySelector('.stat-card.completed .stat-number').textContent = data.completed_hosts;
-        updatePortainerLinks();
-      } catch (e) {
-        console.error('Ошибка обновления списка хостов:', e);
-      }
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-      refreshHosts();
-      setInterval(refreshHosts, 10000);
-    });
     async function openModalWithContent(modalId, apiUrl, contentElementId, isPlaybook = false) {
       const modal = document.getElementById(modalId);
       try {
