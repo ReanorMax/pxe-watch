@@ -5,6 +5,7 @@ import logging
 import re
 import datetime
 import configparser
+import threading
 
 from db_utils import get_db
 
@@ -159,6 +160,75 @@ def api_ansible_tags():
         return jsonify({"error": str(e)}), 500
 
 
+def _run_playbook_async(tags, started):
+    """Execute ansible-playbook in a background thread and update statuses."""
+    cmd = ["ansible-playbook", ANSIBLE_PLAYBOOK, "-i", ANSIBLE_INVENTORY]
+    if tags:
+        cmd.extend(["--tags", ",".join(tags)])
+    result = subprocess.run(cmd, capture_output=True, text=True)
+
+    # Forward stdout/stderr to journald for visibility in the web UI.
+    for line in result.stdout.splitlines():
+        logging.info(line)
+
+    # Ignore warnings about collections not supporting the current Ansible version.
+    warning_re = re.compile(
+        r"^\[WARNING\]: Collection .* does not support Ansible (?:version|action)"
+    )
+    stderr_lines = result.stderr.splitlines() if result.stderr else []
+    non_warning_lines = [line for line in stderr_lines if not warning_re.match(line)]
+    for line in non_warning_lines:
+        logging.error(line)
+
+    ip_status_map = {}
+    recap_started = False
+    for line in result.stdout.splitlines():
+        if line.strip().startswith("PLAY RECAP"):
+            recap_started = True
+            continue
+        if recap_started:
+            match = re.search(r"(\d+\.\d+\.\d+\.\d+).*failed=(\d+)", line)
+            if match:
+                ip, failed = match.groups()
+                ip_status_map[ip] = 'failed' if int(failed) > 0 else 'ok'
+    if ip_status_map:
+        with get_db() as db:
+            for ip, status in ip_status_map.items():
+                set_playbook_status(ip, status)
+                mac_row = db.execute(
+                    "SELECT mac FROM hosts WHERE ip = ?", (ip,)
+                ).fetchone()
+                if mac_row:
+                    db.execute(
+                        """
+                        UPDATE ansible_tasks
+                        SET status=?, step=10
+                        WHERE mac=? AND started_at=?
+                        """,
+                        (status, mac_row['mac'], started),
+                    )
+    if result.returncode == 0:
+        if non_warning_lines:
+            logging.warning(
+                "ansible-playbook completed with warnings: %s",
+                "\n".join(non_warning_lines),
+            )
+        elif stderr_lines:
+            logging.warning(
+                "ansible-playbook reported version warnings: %s",
+                "\n".join(stderr_lines),
+            )
+        else:
+            logging.info("ansible-playbook completed successfully")
+    else:
+        error_msg = "\n".join(non_warning_lines) if non_warning_lines else result.stderr
+        logging.error(
+            "ansible-playbook failed with code %s: %s",
+            result.returncode,
+            error_msg,
+        )
+
+
 @api_bp.route('/ansible/run', methods=['POST'])
 def api_ansible_run():
     try:
@@ -181,80 +251,9 @@ def api_ansible_run():
                 ).fetchone()
                 if ip_row and ip_row['ip']:
                     set_playbook_status(ip_row['ip'], 'running')
-        cmd = ["ansible-playbook", ANSIBLE_PLAYBOOK, "-i", ANSIBLE_INVENTORY]
-        if tags:
-            cmd.extend(["--tags", ",".join(tags)])
-        result = subprocess.run(cmd, capture_output=True, text=True)
 
-        # Ignore warnings about collections not supporting the current Ansible version.
-        # These warnings are emitted on stderr and previously caused the API to
-        # treat the execution as a failure even though ``ansible-playbook``
-        # returned successfully.  We filter them out so that such warnings do
-        # not trigger an error response.
-        warning_re = re.compile(
-            r"^\[WARNING\]: Collection .* does not support Ansible (?:version|action)"
-        )
-        stderr_lines = result.stderr.splitlines() if result.stderr else []
-        non_warning_lines = [line for line in stderr_lines if not warning_re.match(line)]
-
-        ip_status_map = {}
-        recap_started = False
-        for line in result.stdout.splitlines():
-            if line.strip().startswith("PLAY RECAP"):
-                recap_started = True
-                continue
-            if recap_started:
-                match = re.search(r"(\d+\.\d+\.\d+\.\d+).*failed=(\d+)", line)
-                if match:
-                    ip, failed = match.groups()
-                    ip_status_map[ip] = 'failed' if int(failed) > 0 else 'ok'
-        if ip_status_map:
-            with get_db() as db:
-                for ip, status in ip_status_map.items():
-                    set_playbook_status(ip, status)
-                    mac_row = db.execute(
-                        "SELECT mac FROM hosts WHERE ip = ?", (ip,)
-                    ).fetchone()
-                    if mac_row:
-                        db.execute(
-                            """
-                            UPDATE ansible_tasks
-                            SET status=?, step=10
-                            WHERE mac=? AND started_at=?
-                            """,
-                            (status, mac_row['mac'], started),
-                        )
-        if result.returncode == 0:
-            if non_warning_lines:
-                logging.warning(
-                    "ansible-playbook completed with warnings: %s",
-                    "\n".join(non_warning_lines),
-                )
-            elif stderr_lines:
-                logging.warning(
-                    "ansible-playbook reported version warnings: %s",
-                    "\n".join(stderr_lines),
-                )
-            else:
-                logging.info("ansible-playbook completed successfully")
-            return jsonify({'status': 'ok', 'data': result.stdout}), 200
-        else:
-            error_msg = "\n".join(non_warning_lines) if non_warning_lines else result.stderr
-            logging.error(
-                "ansible-playbook failed with code %s: %s",
-                result.returncode,
-                error_msg,
-            )
-            return (
-                jsonify(
-                    {
-                        'status': 'error',
-                        'code': result.returncode,
-                        'msg': error_msg,
-                    }
-                ),
-                500,
-            )
+        threading.Thread(target=_run_playbook_async, args=(tags, started), daemon=True).start()
+        return jsonify({'status': 'started'}), 202
     except Exception as e:
         logging.error(f"Ошибка запуска ansible-playbook: {e}")
         return jsonify({'status': 'error', 'msg': str(e)}), 500
