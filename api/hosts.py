@@ -78,8 +78,12 @@ def run_playbook_async(ip: str) -> None:
             if summary:
                 for host_ip, status in summary.items():
                     set_playbook_status(host_ip, status)
+                if ip not in summary:
+                    status = 'ok' if proc.returncode == 0 else 'failed'
+                    set_playbook_status(ip, status)
             else:
-                set_playbook_status(ip, 'failed')
+                status = 'ok' if proc.returncode == 0 else 'failed'
+                set_playbook_status(ip, status)
         except Exception as e:
             logging.error(f'Ошибка выполнения playbook: {e}')
             set_playbook_status(ip, 'failed')
