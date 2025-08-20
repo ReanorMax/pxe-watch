@@ -224,7 +224,7 @@ def api_ansible_run():
                             """,
                             (status, mac_row['mac'], started),
                         )
-        if result.returncode == 0 or not non_warning_lines:
+        if result.returncode == 0:
             if non_warning_lines:
                 logging.warning(
                     "ansible-playbook completed with warnings: %s",
@@ -239,17 +239,18 @@ def api_ansible_run():
                 logging.info("ansible-playbook completed successfully")
             return jsonify({'status': 'ok', 'data': result.stdout}), 200
         else:
+            error_msg = "\n".join(non_warning_lines) if non_warning_lines else result.stderr
             logging.error(
                 "ansible-playbook failed with code %s: %s",
                 result.returncode,
-                result.stderr,
+                error_msg,
             )
             return (
                 jsonify(
                     {
                         'status': 'error',
                         'code': result.returncode,
-                        'msg': result.stderr,
+                        'msg': error_msg,
                     }
                 ),
                 500,
