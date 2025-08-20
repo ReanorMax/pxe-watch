@@ -163,10 +163,30 @@ def get_ansible_mark(ip: str):
         if result.returncode == 0:
             try:
                 data = json.loads(result.stdout)
-                data['status'] = 'ok'
+                data['status'] = data.get('status', 'ok') or 'ok'
+                # Once the mark file is successfully read we assume the
+                # playbook finished and update the stored status so that
+                # subsequent calls don't fall back to "running" when the host
+                # becomes unreachable.
+                try:
+                    set_playbook_status(ip, data['status'])
+                except Exception:
+                    # Updating the database is best-effort; any failure should
+                    # not prevent returning the fetched data.
+                    logging.exception(
+                        f"Не удалось сохранить статус playbook для {ip}"
+                    )
                 return data
-            except json.JSONDecodeError:
-                pass
+            except json.JSONDecodeError as e:
+                if db_status and db_updated:
+                    if db_status in ('ok', 'failed'):
+                        return {'status': db_status, 'install_date': db_updated}
+                    if db_status == 'running':
+                        return {'status': 'pending', 'install_date': db_updated}
+                return {
+                    'status': 'error',
+                    'msg': f'Некорректный JSON в mark.json: {str(e)}',
+                }
 
         if db_status and db_updated:
             if db_status in ('ok', 'failed'):
