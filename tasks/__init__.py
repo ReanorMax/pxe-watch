@@ -3,8 +3,10 @@ import time
 import subprocess
 import datetime
 import logging
+import re
 
 from db_utils import get_db
+from services import set_playbook_status
 
 # Ensure background threads start only once
 _tasks_started = False
@@ -62,6 +64,48 @@ def ping_hosts_background():
             logging.error(f"Ошибка в фоновой задаче пинга: {e}", exc_info=True)
 
 
+def monitor_journal_playbook() -> None:
+    """Watch systemd journal and update playbook status when summary appears."""
+    summary_re = re.compile(
+        r"(?P<ip>\d{1,3}(?:\.\d{1,3}){3})\s*:\s*(?P<stats>.*)"
+    )
+    cmd = ["journalctl", "-f", "-n", "0"]
+    while True:
+        try:
+            proc = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                text=True,
+            )
+            for line in iter(proc.stdout.readline, ""):
+                match = summary_re.search(line)
+                if not match:
+                    continue
+                ip = match.group("ip")
+                stats = match.group("stats")
+                failed = unreachable = 0
+                for token in stats.split():
+                    if token.startswith("failed="):
+                        try:
+                            failed = int(token.split("=", 1)[1])
+                        except ValueError:
+                            continue
+                    elif token.startswith("unreachable="):
+                        try:
+                            unreachable = int(token.split("=", 1)[1])
+                        except ValueError:
+                            continue
+                status = "ok" if failed == 0 and unreachable == 0 else "failed"
+                set_playbook_status(ip, status)
+            proc.wait()
+        except FileNotFoundError:
+            logging.error("journalctl not found; playbook monitoring disabled")
+            return
+        except Exception as e:
+            logging.error(f"Ошибка чтения журнала: {e}", exc_info=True)
+            time.sleep(5)
+
 def start_background_tasks() -> None:
     """Start all background threads."""
     global _tasks_started
@@ -69,3 +113,4 @@ def start_background_tasks() -> None:
         return
     _tasks_started = True
     threading.Thread(target=ping_hosts_background, daemon=True).start()
+    threading.Thread(target=monitor_journal_playbook, daemon=True).start()
