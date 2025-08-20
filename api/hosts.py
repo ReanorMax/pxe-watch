@@ -30,6 +30,11 @@ def parse_playbook_summary(output: str) -> dict[str, str]:
     if "PLAY RECAP" not in output:
         return result
 
+    # Удаляем управляющие ANSI-последовательности, которые Ansible
+    # добавляет для цветного вывода.  В противном случае имена хостов
+    # могут содержать escape-коды и не совпадать с IP-адресами в базе.
+    output = re.sub(r"\x1b\[[0-9;]*m", "", output)
+
     recap = output.split("PLAY RECAP", 1)[1]
     for line in recap.splitlines():
         line = line.strip()
