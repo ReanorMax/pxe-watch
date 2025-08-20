@@ -133,8 +133,6 @@ def get_ansible_mark(ip: str):
         if row:
             db_status = row['status']
             db_updated = row['updated']
-        if db_status in ('ok', 'failed'):
-            return {'status': db_status, 'install_date': db_updated}
 
         cmd = (
             f"sshpass -p '{SSH_PASSWORD}' ssh {SSH_OPTIONS} {SSH_USER}@{ip} "
@@ -148,34 +146,36 @@ def get_ansible_mark(ip: str):
                 data = json.loads(result.stdout)
                 data['status'] = 'ok'
                 return data
-            except json.JSONDecodeError as e:
+            except json.JSONDecodeError:
+                pass
+
+        if db_status and db_updated:
+            if db_status in ('ok', 'failed'):
+                return {'status': db_status, 'install_date': db_updated}
+            if db_status == 'running':
+                return {'status': 'pending', 'install_date': db_updated}
+
+        if result.returncode != 0:
+            if "No such file" in result.stderr:
                 return {
-                    'status': 'error',
-                    'msg': f'Некорректный JSON в mark.json: {str(e)}',
+                    'status': 'none',
+                    'msg': 'Файл mark.json не найден',
                 }
-
-        if db_status == 'running' and db_updated:
-            return {'status': 'pending', 'install_date': db_updated}
-        if db_status in ('ok', 'failed') and db_updated:
-            return {'status': db_status, 'install_date': db_updated}
-
-        if "No such file" in result.stderr:
-            return {
-                'status': 'none',
-                'msg': 'Файл mark.json не найден',
-            }
-        return {'status': 'error', 'msg': f"SSH ошибка: {result.stderr.strip()}"}
+            return {'status': 'error', 'msg': f"SSH ошибка: {result.stderr.strip()}"}
+        return {'status': 'error', 'msg': 'Некорректный JSON в mark.json'}
     except subprocess.TimeoutExpired:
-        if db_status in ('ok', 'failed') and db_updated:
-            return {'status': db_status, 'install_date': db_updated}
-        if db_status == 'running' and db_updated:
-            return {'status': 'pending', 'install_date': db_updated}
+        if db_status and db_updated:
+            if db_status in ('ok', 'failed'):
+                return {'status': db_status, 'install_date': db_updated}
+            if db_status == 'running':
+                return {'status': 'pending', 'install_date': db_updated}
         return {'status': 'error', 'msg': 'Таймаут подключения к хосту'}
     except Exception as e:
-        if db_status in ('ok', 'failed') and db_updated:
-            return {'status': db_status, 'install_date': db_updated}
-        if db_status == 'running' and db_updated:
-            return {'status': 'pending', 'install_date': db_updated}
+        if db_status and db_updated:
+            if db_status in ('ok', 'failed'):
+                return {'status': db_status, 'install_date': db_updated}
+            if db_status == 'running':
+                return {'status': 'pending', 'install_date': db_updated}
         return {'status': 'error', 'msg': f'Внутренняя ошибка: {str(e)}'}
 
 
