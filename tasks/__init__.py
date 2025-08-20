@@ -89,7 +89,8 @@ def parse_ansible_logs():
             )
             lines = result.stdout.strip().split('\n')
             new_lines = [line for line in lines if line not in last_checked_lines]
-            last_checked_lines.update(new_lines[-1000:])
+            # Keep only the most recent 1000 lines to avoid unbounded growth
+            last_checked_lines = set(lines[-1000:])
             ip_status_map = {}
             for line in reversed(new_lines):
                 if 'PLAY RECAP' in line:
@@ -101,7 +102,13 @@ def parse_ansible_logs():
                 if recap_match:
                     ts_str, ip, failed_str = recap_match.groups()
                     status = 'failed' if int(failed_str) > 0 else 'ok'
-                    ts = datetime.datetime.fromisoformat(ts_str)
+                    try:
+                        ts = datetime.datetime.fromisoformat(ts_str)
+                    except ValueError:
+                        logging.warning(
+                            f"Некорректный формат даты в строке журнала: {ts_str}"
+                        )
+                        continue
                     ip_status_map[ip] = {'status': status, 'ts': ts}
                     continue
                 running_match = re.search(
@@ -110,7 +117,13 @@ def parse_ansible_logs():
                 )
                 if running_match:
                     ts_str, ip = running_match.groups()
-                    ts = datetime.datetime.fromisoformat(ts_str)
+                    try:
+                        ts = datetime.datetime.fromisoformat(ts_str)
+                    except ValueError:
+                        logging.warning(
+                            f"Некорректный формат даты в строке журнала: {ts_str}"
+                        )
+                        continue
                     ip_status_map.setdefault(ip, {'status': 'running', 'ts': ts})
             for ip, data in ip_status_map.items():
                 set_playbook_status(ip, data['status'], data['ts'].strftime('%Y-%m-%d %H:%M:%S'))
