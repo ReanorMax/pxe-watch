@@ -129,6 +129,7 @@
       <select id="preseed-select"></select>
       <button class="btn" id="preseed-add"><i class="fa fa-plus"></i></button>
       <button class="btn" id="preseed-activate"><i class="fa fa-check"></i> Активировать</button>
+      <button class="btn" id="preseed-delete"><i class="fa fa-trash"></i></button>
     </div>
     <textarea id="preseed-content" readonly></textarea>
     <div class="controls">
@@ -138,16 +139,20 @@
   </div>
   <div class="modal" id="dnsmasq-modal">
     <header><span>DNSMasq DHCP / iPXE</span><button class="btn close-modal" data-modal="dnsmasq-modal"><i class="fa fa-times"></i></button></header>
-    <textarea id="dnsmasq-content"></textarea>
+    <textarea id="dnsmasq-content" readonly></textarea>
     <div class="controls">
-      <button class="btn" id="save-dnsmasq"><i class="fa fa-save"></i> Сохранить и перезапустить</button>
-      <button class="btn" id="add-dhcp-host"><i class="fa fa-plus"></i> Добавить MAC</button>
+      <button class="btn" id="edit-dnsmasq-btn"><i class="fa fa-edit"></i> Редактировать</button>
+      <button class="btn" id="save-dnsmasq" style="display:none"><i class="fa fa-save"></i> Сохранить и перезапустить</button>
+      <button class="btn" id="add-dhcp-host" style="display:none"><i class="fa fa-plus"></i> Добавить MAC</button>
     </div>
   </div>
   <div class="modal" id="ipxe-modal">
     <header><span>/srv/tftp/boot.ipxe и autoexec.ipxe</span><button class="btn close-modal" data-modal="ipxe-modal"><i class="fa fa-times"></i></button></header>
-    <textarea id="ipxe-content"></textarea>
-    <div class="controls"><button class="btn" id="save-ipxe"><i class="fa fa-save"></i> Сохранить</button></div>
+    <textarea id="ipxe-content" readonly></textarea>
+    <div class="controls">
+      <button class="btn" id="edit-ipxe-btn"><i class="fa fa-edit"></i> Редактировать</button>
+      <button class="btn" id="save-ipxe" style="display:none"><i class="fa fa-save"></i> Сохранить</button>
+    </div>
   </div>
   <div class="modal" id="playbook-modal">
     <header><span>playbook.yml</span><button class="btn close-modal" data-modal="playbook-modal"><i class="fa fa-times"></i></button></header>

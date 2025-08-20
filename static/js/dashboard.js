@@ -60,6 +60,8 @@
           const el = document.getElementById(contentElementId);
           if (el) el.value = content;
         }
+        if (contentElementId === 'ipxe-content') setIpxeEdit(false);
+        if (contentElementId === 'dnsmasq-content') setDnsmasqEdit(false);
         openModal(modal);
       } catch (e) {
         alert(`Ошибка загрузки: ${e.message}`);
@@ -111,6 +113,52 @@
     setupSaveButton('save-dnsmasq', '/api/dnsmasq', 'dnsmasq-content', () => closeModal(document.getElementById('dnsmasq-modal')));
     setupSaveButton('save-playbook', '/api/ansible/playbook', null, () => closeModal(document.getElementById('playbook-modal')), true);
     setupSaveButton('save-inventory', '/api/ansible/inventory', 'inventory-content', () => closeModal(document.getElementById('inventory-modal')));
+
+    function setIpxeEdit(editing) {
+      const textarea = document.getElementById('ipxe-content');
+      const saveBtn = document.getElementById('save-ipxe');
+      const editBtn = document.getElementById('edit-ipxe-btn');
+      textarea.readOnly = !editing;
+      saveBtn.style.display = editing ? 'inline-flex' : 'none';
+      editBtn.innerHTML = editing
+        ? '<i class="fa fa-times"></i> Отмена'
+        : '<i class="fa fa-edit"></i> Редактировать';
+    }
+
+    function setDnsmasqEdit(editing) {
+      const textarea = document.getElementById('dnsmasq-content');
+      const saveBtn = document.getElementById('save-dnsmasq');
+      const editBtn = document.getElementById('edit-dnsmasq-btn');
+      const addBtn = document.getElementById('add-dhcp-host');
+      textarea.readOnly = !editing;
+      saveBtn.style.display = editing ? 'inline-flex' : 'none';
+      addBtn.style.display = editing ? 'inline-flex' : 'none';
+      editBtn.innerHTML = editing
+        ? '<i class="fa fa-times"></i> Отмена'
+        : '<i class="fa fa-edit"></i> Редактировать';
+    }
+
+    document.getElementById('edit-ipxe-btn').onclick = async () => {
+      const textarea = document.getElementById('ipxe-content');
+      if (textarea.readOnly) {
+        setIpxeEdit(true);
+      } else {
+        setIpxeEdit(false);
+        const res = await fetch('/api/ipxe');
+        textarea.value = await res.text();
+      }
+    };
+
+    document.getElementById('edit-dnsmasq-btn').onclick = async () => {
+      const textarea = document.getElementById('dnsmasq-content');
+      if (textarea.readOnly) {
+        setDnsmasqEdit(true);
+      } else {
+        setDnsmasqEdit(false);
+        const res = await fetch('/api/dnsmasq');
+        textarea.value = await res.text();
+      }
+    };
 
     document.getElementById('edit-preseed').onclick = openPreseedModal;
 
@@ -206,6 +254,23 @@
         setPreseedEdit(true);
       } catch (e) {
         alert('Ошибка создания: ' + e.message);
+      }
+    };
+
+    document.getElementById('preseed-delete').onclick = async () => {
+      const name = document.getElementById('preseed-select').value;
+      if (!name || !confirm(`Удалить ${name}?`)) return;
+      try {
+        const res = await fetch('/api/preseed/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name })
+        });
+        if (!res.ok) throw new Error((await res.json()).msg);
+        alert('Удалено.');
+        openPreseedModal();
+      } catch (e) {
+        alert('Ошибка удаления: ' + e.message);
       }
     };
     let currentFilesPath = '';

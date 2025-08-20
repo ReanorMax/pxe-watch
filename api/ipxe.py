@@ -20,6 +20,8 @@ def _preseed_file_path(name: str) -> str:
 
 
 def _active_preseed_name() -> str:
+    if not os.path.exists(PRESEED_PATH):
+        return ""
     return os.path.basename(os.path.realpath(PRESEED_PATH))
 
 
@@ -37,6 +39,8 @@ def api_preseed_list():
 @api_bp.route('/preseed', methods=['GET'])
 def api_preseed_get():
     name = request.args.get('name') or _active_preseed_name()
+    if not name:
+        return '', 404
     path = _preseed_file_path(name)
     return read_file(path), 200, {'Content-Type': 'text/plain; charset=utf-8'}
 
@@ -44,6 +48,8 @@ def api_preseed_get():
 @api_bp.route('/preseed', methods=['POST'])
 def api_preseed_post():
     name = request.args.get('name') or _active_preseed_name()
+    if not name:
+        return jsonify({'status': 'error', 'msg': 'name required'}), 400
     body = request.get_data(as_text=True)
     try:
         path = _preseed_file_path(name)
@@ -93,6 +99,27 @@ def api_preseed_activate():
         return jsonify({'status': 'ok'}), 200
     except OSError as e:
         logging.error(f'Ошибка при активации preseed файла: {e}')
+        return jsonify({'status': 'error', 'msg': str(e)}), 500
+
+
+@api_bp.route('/preseed/delete', methods=['POST'])
+def api_preseed_delete():
+    data = request.get_json(force=True)
+    name = data.get('name') if data else None
+    if not name:
+        return jsonify({'status': 'error', 'msg': 'name required'}), 400
+    path = _preseed_file_path(name)
+    if not os.path.isfile(path):
+        return jsonify({'status': 'error', 'msg': 'file not found'}), 404
+    try:
+        if os.path.islink(PRESEED_PATH):
+            link_target = os.path.realpath(PRESEED_PATH)
+            if os.path.abspath(path) == link_target:
+                os.remove(PRESEED_PATH)
+        os.remove(path)
+        return jsonify({'status': 'ok'}), 200
+    except OSError as e:
+        logging.error(f'Ошибка при удалении preseed файла: {e}')
         return jsonify({'status': 'error', 'msg': str(e)}), 500
 
 
