@@ -23,4 +23,3 @@ SSH_OPTIONS = os.getenv(
     'SSH_OPTIONS',
     '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
 )
-ANSIBLE_SERVICE_NAME = os.getenv('ANSIBLE_SERVICE_NAME', 'ansible-api.service')

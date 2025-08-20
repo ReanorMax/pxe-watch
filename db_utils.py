@@ -55,21 +55,4 @@ def get_db():
         """
     )
 
-    # Track Ansible task execution details
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS ansible_tasks (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            mac TEXT,
-            task_name TEXT,
-            status TEXT,
-            step INTEGER DEFAULT 0,
-            total_steps INTEGER DEFAULT 1,
-            started_at TEXT,
-            finished_at TEXT,
-            log TEXT
-        )
-        """
-    )
-
     return conn
