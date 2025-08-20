@@ -163,7 +163,9 @@ def get_ansible_mark(ip: str):
         if result.returncode == 0:
             try:
                 data = json.loads(result.stdout)
-                data['status'] = data.get('status', 'ok') or 'ok'
+                data['status'] = (data.get('status', 'ok') or 'ok').lower()
+                if data['status'] == 'success':
+                    data['status'] = 'ok'
                 # Once the mark file is successfully read we assume the
                 # playbook finished and update the stored status so that
                 # subsequent calls don't fall back to "running" when the host
