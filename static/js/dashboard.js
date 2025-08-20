@@ -287,7 +287,6 @@
       if (p.style.display === 'block') {
         autoScroll = true;
         loadAnsibleLog();
-        loadAnsibleTags();
       }
     };
     async function loadAnsibleLog() {
@@ -307,24 +306,6 @@
       }
     }
 
-    async function loadAnsibleTags() {
-      try {
-        const res = await fetch('/api/ansible/tags');
-        const data = await res.json();
-        const sel = document.getElementById('ansible-tags');
-        sel.innerHTML = '';
-        if (data.tags) {
-          data.tags.forEach(t => {
-            const opt = document.createElement('option');
-            opt.value = t;
-            opt.textContent = t;
-            sel.appendChild(opt);
-          });
-        }
-      } catch (e) {
-        console.error('Ошибка загрузки тегов:', e);
-      }
-    }
     setInterval(loadAnsibleLog, 3000);
     const ansibleLogEl = document.getElementById('ansible-log');
     ansibleLogEl.addEventListener('scroll', () => {
@@ -344,23 +325,6 @@
       } else {
         log.style.display = 'none';
         btn.innerHTML = '<i class="fa fa-chevron-down"></i>';
-      }
-    };
-    document.getElementById('run-ansible').onclick = async () => {
-      const sel = document.getElementById('ansible-tags');
-      const tags = Array.from(sel.selectedOptions).map(o => o.value);
-      try {
-        const res = await fetch('/api/ansible/run', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tags })
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.msg || 'Ошибка запуска');
-        alert('Запуск инициирован');
-        loadAnsibleLog();
-      } catch (e) {
-        alert('Ошибка запуска: ' + e.message);
       }
     };
     document.getElementById('hosts-table-body').addEventListener('click', async (e) => {
