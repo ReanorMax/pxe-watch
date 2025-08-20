@@ -1,4 +1,6 @@
     let playbookEditor;
+    let ansibleLogLimit = 100;
+    let autoScroll = true;
     document.addEventListener('DOMContentLoaded', () => {
       playbookEditor = CodeMirror(document.getElementById('playbook-editor'), {
         value: "",
@@ -282,6 +284,84 @@
     document.getElementById('toggle-ansible').onclick = () => {
       const p = document.getElementById('ansible-panel');
       p.style.display = p.style.display === 'none' ? 'block' : 'none';
+      if (p.style.display === 'block') {
+        autoScroll = true;
+        loadAnsibleLog();
+        loadAnsibleTags();
+      }
+    };
+    async function loadAnsibleLog() {
+      try {
+        const res = await fetch(`/api/logs/ansible?limit=${ansibleLogLimit}`);
+        const lines = await res.json();
+        const logEl = document.getElementById('ansible-log');
+        logEl.innerHTML = '';
+        lines.forEach(line => {
+            const div = document.createElement('div');
+            div.innerHTML = line;
+            logEl.appendChild(div);
+        });
+        if (autoScroll) setTimeout(() => logEl.scrollTop = logEl.scrollHeight, 0);
+      } catch (e) {
+        document.getElementById('ansible-log').innerHTML = `<span style="color:#ff6b6b">Ошибка: ${e.message}</span>`;
+      }
+    }
+
+    async function loadAnsibleTags() {
+      try {
+        const res = await fetch('/api/ansible/tags');
+        const data = await res.json();
+        const sel = document.getElementById('ansible-tags');
+        sel.innerHTML = '';
+        if (data.tags) {
+          data.tags.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t;
+            opt.textContent = t;
+            sel.appendChild(opt);
+          });
+        }
+      } catch (e) {
+        console.error('Ошибка загрузки тегов:', e);
+      }
+    }
+    setInterval(loadAnsibleLog, 3000);
+    const ansibleLogEl = document.getElementById('ansible-log');
+    ansibleLogEl.addEventListener('scroll', () => {
+      const atBottom = ansibleLogEl.scrollTop + ansibleLogEl.clientHeight >= ansibleLogEl.scrollHeight - 5;
+      autoScroll = atBottom;
+    });
+    document.getElementById('ansible-log-limit').addEventListener('change', e => {
+      ansibleLogLimit = parseInt(e.target.value, 10);
+      loadAnsibleLog();
+    });
+    document.getElementById('collapse-ansible-log').onclick = () => {
+      const log = document.getElementById('ansible-log');
+      const btn = document.getElementById('collapse-ansible-log');
+      if (log.style.display === 'none') {
+        log.style.display = 'block';
+        btn.innerHTML = '<i class="fa fa-chevron-up"></i>';
+      } else {
+        log.style.display = 'none';
+        btn.innerHTML = '<i class="fa fa-chevron-down"></i>';
+      }
+    };
+    document.getElementById('run-ansible').onclick = async () => {
+      const sel = document.getElementById('ansible-tags');
+      const tags = Array.from(sel.selectedOptions).map(o => o.value);
+      try {
+        const res = await fetch('/api/ansible/run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tags })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.msg || 'Ошибка запуска');
+        alert('Запуск инициирован');
+        loadAnsibleLog();
+      } catch (e) {
+        alert('Ошибка запуска: ' + e.message);
+      }
     };
     document.getElementById('hosts-table-body').addEventListener('click', async (e) => {
       if (e.target.closest('.btn-reboot')) {
