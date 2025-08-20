@@ -358,7 +358,6 @@
         const data = await res.json();
         if (!res.ok) throw new Error(data.msg || 'Ошибка запуска');
         alert('Запуск инициирован');
-        loadAnsibleLog();
       } catch (e) {
         alert('Ошибка запуска: ' + e.message);
       }
