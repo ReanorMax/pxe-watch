@@ -165,24 +165,53 @@ def _run_playbook_async(tags, started):
     cmd = ["ansible-playbook", ANSIBLE_PLAYBOOK, "-i", ANSIBLE_INVENTORY]
     if tags:
         cmd.extend(["--tags", ",".join(tags)])
-    result = subprocess.run(cmd, capture_output=True, text=True)
 
-    # Forward stdout/stderr to journald for visibility in the web UI.
-    for line in result.stdout.splitlines():
-        logging.info(line)
-
-    # Ignore warnings about collections not supporting the current Ansible version.
     warning_re = re.compile(
         r"^\[WARNING\]: Collection .* does not support Ansible (?:version|action)"
     )
-    stderr_lines = result.stderr.splitlines() if result.stderr else []
+
+    process = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        bufsize=1,
+    )
+
+    stdout_lines = []
+    stderr_lines = []
+
+    def _stream(pipe, log_fn, storage, filter_fn=None):
+        with pipe:
+            for raw in iter(pipe.readline, ""):
+                line = raw.rstrip()
+                storage.append(line)
+                if filter_fn and not filter_fn(line):
+                    continue
+                log_fn(line)
+
+    threads = [
+        threading.Thread(
+            target=_stream,
+            args=(process.stdout, logging.info, stdout_lines),
+        ),
+        threading.Thread(
+            target=_stream,
+            args=(process.stderr, logging.error, stderr_lines),
+            kwargs={"filter_fn": lambda l: not warning_re.match(l)},
+        ),
+    ]
+    for t in threads:
+        t.start()
+    process.wait()
+    for t in threads:
+        t.join()
+
     non_warning_lines = [line for line in stderr_lines if not warning_re.match(line)]
-    for line in non_warning_lines:
-        logging.error(line)
 
     ip_status_map = {}
     recap_started = False
-    for line in result.stdout.splitlines():
+    for line in stdout_lines:
         if line.strip().startswith("PLAY RECAP"):
             recap_started = True
             continue
@@ -207,7 +236,7 @@ def _run_playbook_async(tags, started):
                         """,
                         (status, mac_row['mac'], started),
                     )
-    if result.returncode == 0:
+    if process.returncode == 0:
         if non_warning_lines:
             logging.warning(
                 "ansible-playbook completed with warnings: %s",
@@ -221,10 +250,10 @@ def _run_playbook_async(tags, started):
         else:
             logging.info("ansible-playbook completed successfully")
     else:
-        error_msg = "\n".join(non_warning_lines) if non_warning_lines else result.stderr
+        error_msg = "\n".join(non_warning_lines) if non_warning_lines else "\n".join(stderr_lines)
         logging.error(
             "ansible-playbook failed with code %s: %s",
-            result.returncode,
+            process.returncode,
             error_msg,
         )
 
