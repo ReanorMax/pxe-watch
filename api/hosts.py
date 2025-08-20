@@ -1,7 +1,6 @@
 from flask import request, jsonify
 import subprocess
 import logging
-import os
 
 from config import (
     SSH_PASSWORD,
@@ -33,7 +32,7 @@ def api_register():
             ANSIBLE_PLAYBOOK,
             "-i",
             ANSIBLE_INVENTORY,
-        ], cwd=os.path.dirname(ANSIBLE_PLAYBOOK))
+        ])
         logging.info(f'Ansible-playbook запущен для MAC {mac}')
     except Exception as e:
         logging.error(f'Ошибка запуска playbook: {e}')
