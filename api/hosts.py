@@ -3,6 +3,7 @@ import subprocess
 import logging
 import threading
 import re
+import datetime
 
 from config import (
     SSH_PASSWORD,
@@ -10,10 +11,16 @@ from config import (
     SSH_OPTIONS,
     ANSIBLE_PLAYBOOK,
     ANSIBLE_INVENTORY,
+    LOCAL_OFFSET,
 )
 from . import api_bp
+from db_utils import get_db
 from services.registration import register_host
-from services import set_playbook_status
+from services import (
+    set_playbook_status,
+    get_ansible_mark,
+    sync_inventory_hosts,
+)
 
 
 def parse_playbook_summary(output: str) -> dict[str, str]:
@@ -193,3 +200,110 @@ def api_host_shutdown():
         msg = f'Неизвестная ошибка при отправке команды выключения на {ip}: {e}'
         logging.error(msg, exc_info=True)
         return jsonify({'status': 'error', 'msg': msg}), 500
+
+
+@api_bp.route('/hosts/status', methods=['GET'])
+def api_hosts_status():
+    """Return current hosts info for dashboard auto-refresh."""
+    sync_inventory_hosts()
+    db = get_db()
+    rows = db.execute(
+        '''
+        SELECT h.mac, h.ip, h.stage, h.details, h.ts,
+               (SELECT ts FROM hosts
+                WHERE mac = h.mac AND stage IN ('dhcp', 'ipxe_started')
+                ORDER BY ts ASC LIMIT 1) AS ipxe_ts,
+               COALESCE(s.is_online, 0) AS is_online
+        FROM hosts h
+        LEFT JOIN host_status s ON h.ip = s.ip
+        INNER JOIN (
+            SELECT mac, MAX(ts) AS last_ts FROM hosts GROUP BY mac
+        ) grp
+        ON h.mac = grp.mac AND h.ts = grp.last_ts
+        ORDER BY ipxe_ts DESC
+        '''
+    ).fetchall()
+
+    STAGE_LABELS = {
+        'dhcp': 'IP получен',
+        'ipxe_started': 'Загрузка iPXE',
+        'debian_install': 'Идёт установка',
+        'reboot': 'Перезагрузка',
+    }
+
+    hosts: list[dict[str, object]] = []
+    total_hosts = online_count = installing_count = completed_count = 0
+    for row in rows:
+        mac, ip, stage, details, ts_utc, _ipxe_ts, db_is_online = row
+        last_seen = datetime.datetime.fromisoformat(ts_utc) + LOCAL_OFFSET
+        is_online = bool(db_is_online)
+        ansible_result = get_ansible_mark(ip)
+        ansible_status = ansible_result.get('status')
+        if ansible_status == 'ok':
+            try:
+                install_date_str = ansible_result['install_date']
+                install_dt = datetime.datetime.fromisoformat(
+                    install_date_str.replace('Z', '+00:00')
+                )
+                if install_dt.tzinfo is None:
+                    install_dt = install_dt.replace(
+                        tzinfo=datetime.timezone.utc
+                    )
+                install_dt = install_dt.astimezone(
+                    datetime.timezone.utc
+                ) + LOCAL_OFFSET
+                date_str = install_dt.strftime('%d.%m.%Y %H:%M')
+                version = ansible_result.get('version', '')
+                stage_label = f'✅ Ansible: {date_str}'
+                if version:
+                    stage_label += f' (v{version})'
+            except Exception:
+                stage_label = '✅ Ansible: завершён (дата неизвестна)'
+        elif ansible_status == 'pending':
+            label = STAGE_LABELS.get(stage, '—') + ' ⏳ Ansible: в процессе'
+            date_str = ansible_result.get('install_date')
+            if date_str:
+                try:
+                    install_dt = datetime.datetime.fromisoformat(
+                        date_str.replace('Z', '+00:00')
+                    )
+                    if install_dt.tzinfo is None:
+                        install_dt = install_dt.replace(
+                            tzinfo=datetime.timezone.utc
+                        )
+                    install_dt = install_dt.astimezone(
+                        datetime.timezone.utc
+                    ) + LOCAL_OFFSET
+                    label += ' с ' + install_dt.strftime('%d.%m.%Y %H:%M')
+                except Exception:
+                    pass
+            stage_label = label
+        else:
+            stage_label = STAGE_LABELS.get(stage, '—')
+        hosts.append(
+            {
+                'mac': mac,
+                'ip': ip or '—',
+                'stage': stage_label,
+                'last': last_seen.strftime('%H:%M:%S'),
+                'online': is_online,
+                'details': details or '',
+            }
+        )
+        total_hosts += 1
+        if is_online:
+            online_count += 1
+        if stage == 'debian_install' or ansible_status == 'pending':
+            installing_count += 1
+        if ansible_status == 'ok':
+            completed_count += 1
+
+    return jsonify(
+        {
+            'hosts': hosts,
+            'total_hosts': total_hosts,
+            'online_hosts': online_count,
+            'installing_hosts': installing_count,
+            'completed_hosts': completed_count,
+        }
+    )
