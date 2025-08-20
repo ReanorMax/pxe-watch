@@ -140,6 +140,7 @@ def api_ansible_tags():
             capture_output=True,
             text=True,
             check=True,
+            cwd=os.path.dirname(ANSIBLE_PLAYBOOK),
         )
         tags = set()
         for line in result.stdout.splitlines():
@@ -184,7 +185,12 @@ def api_ansible_run():
         cmd = ["ansible-playbook", ANSIBLE_PLAYBOOK, "-i", ANSIBLE_INVENTORY]
         if tags:
             cmd.extend(["--tags", ",".join(tags)])
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            cwd=os.path.dirname(ANSIBLE_PLAYBOOK),
+        )
 
         # Ignore warnings about collections not supporting the current Ansible version.
         # These warnings are emitted on stderr and previously caused the API to
