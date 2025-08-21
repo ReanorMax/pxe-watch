@@ -1,5 +1,6 @@
 from datetime import timedelta
 import os
+import shlex
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -18,6 +19,9 @@ ANSIBLE_INVENTORY = os.getenv('ANSIBLE_INVENTORY', '/root/ansible/inventory.ini'
 ANSIBLE_FILES_DIR = os.getenv('ANSIBLE_FILES_DIR', '/home/ansible-offline/files')
 ANSIBLE_TEMPLATES_DIR = os.getenv('ANSIBLE_TEMPLATES_DIR', '/root/ansible/templates')
 SSH_PASSWORD = os.getenv('SSH_PASSWORD', '')
+# ``sshpass`` receives the password via ``-p``.  Escape it so that special
+# characters (including quotes) do not break the shell command.
+SSH_PASS = shlex.quote(SSH_PASSWORD)
 SSH_USER = os.getenv('SSH_USER', 'root')
 SSH_OPTIONS = os.getenv(
     'SSH_OPTIONS',
