@@ -132,53 +132,6 @@ def set_playbook_status(ip: str, status: str) -> None:
     except Exception as e:
         logging.error(f"Ошибка обновления статуса playbook для {ip}: {e}")
 
-
-def set_install_status(ip: str, status: str, completed_at: str) -> None:
-    """Сохранить статус установки ОС для указанного IP."""
-    try:
-        with get_db() as db:
-            db.execute(
-                """
-                INSERT INTO install_status (ip, status, completed_at)
-                VALUES (?, ?, ?)
-                ON CONFLICT(ip) DO UPDATE SET
-                    status = excluded.status,
-                    completed_at = excluded.completed_at
-                """,
-                (ip, status, completed_at),
-            )
-    except Exception as e:
-        logging.error(f"Ошибка обновления install_status для {ip}: {e}")
-
-
-def check_install_status(ip: str) -> None:
-    """Проверить наличие ``install_status.json`` на хосте и сохранить результат."""
-    if not re.match(r'^\d{1,3}(\.\d{1,3}){3}$', ip) or ip == '—':
-        return
-    cmd = (
-        f"sshpass -p '{SSH_PASSWORD}' ssh {SSH_OPTIONS} {SSH_USER}@{ip} "
-        "'cat /var/log/install_status.json'"
-    )
-    try:
-        result = subprocess.run(
-            cmd, shell=True, capture_output=True, text=True, timeout=10
-        )
-        if result.returncode == 0:
-            try:
-                data = json.loads(result.stdout)
-                status = data.get('status')
-                completed_at = data.get('completed_at')
-                if status and completed_at:
-                    set_install_status(ip, status.lower(), completed_at)
-            except json.JSONDecodeError as e:
-                logging.warning(
-                    f"Некорректный JSON install_status на {ip}: {e}"
-                )
-    except subprocess.TimeoutExpired:
-        logging.warning(f"Таймаут проверки install_status на {ip}")
-    except Exception as e:
-        logging.warning(f"Ошибка проверки install_status на {ip}: {e}")
-
 def get_ansible_mark(ip: str):
     """Fetch ``/opt/ansible_mark.json`` or fall back to stored status.
 
