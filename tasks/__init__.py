@@ -4,11 +4,9 @@ import subprocess
 import datetime
 import logging
 import re
-import json
 
 from db_utils import get_db
 from services import set_playbook_status
-from config import SSH_PASSWORD, SSH_USER, SSH_OPTIONS
 
 # Ensure background threads start only once
 _tasks_started = False
@@ -105,56 +103,6 @@ def ansible_log_monitor() -> None:
             time.sleep(5)
 
 
-def fetch_install_status(ip: str) -> None:
-    """Считать удалённый файл install_status.json и сохранить его в БД."""
-    cmd = (
-        f"sshpass -p '{SSH_PASSWORD}' ssh {SSH_OPTIONS} {SSH_USER}@{ip} "
-        "'cat /var/log/install_status.json'"
-    )
-    try:
-        result = subprocess.run(
-            cmd, shell=True, capture_output=True, text=True, timeout=10
-        )
-        if result.returncode != 0:
-            if "No such file" not in result.stderr:
-                logging.debug(
-                    f"install_status.json недоступен на {ip}: {result.stderr.strip()}"
-                )
-            return
-        data = json.loads(result.stdout)
-        status = data.get('status')
-        completed_at = data.get('completed_at')
-        if status and completed_at:
-            set_playbook_status(ip, status, completed_at)
-    except json.JSONDecodeError as e:
-        logging.warning(f"Некорректный JSON от {ip}: {e}")
-    except subprocess.TimeoutExpired:
-        logging.warning(f"Таймаут получения install_status.json от {ip}")
-    except Exception as e:
-        logging.warning(f"Ошибка при чтении install_status.json с {ip}: {e}")
-
-
-def install_status_monitor() -> None:
-    """Периодически проверять наличие install_status.json на хостах."""
-    while True:
-        time.sleep(60)
-        logging.info("Проверка статуса установки на хостах...")
-        try:
-            with get_db() as db:
-                rows = db.execute(
-                    "SELECT DISTINCT ip FROM hosts WHERE ip != '—' AND ip IS NOT NULL"
-                ).fetchall()
-                ips = [row[0] for row in rows]
-            for ip in ips:
-                fetch_install_status(ip)
-                time.sleep(0.1)
-        except Exception as e:
-            logging.error(
-                f"Ошибка в фоновой задаче проверки install_status.json: {e}",
-                exc_info=True,
-            )
-
-
 def start_background_tasks() -> None:
     """Start all background threads."""
     global _tasks_started
@@ -163,4 +111,3 @@ def start_background_tasks() -> None:
     _tasks_started = True
     threading.Thread(target=ping_hosts_background, daemon=True).start()
     threading.Thread(target=ansible_log_monitor, daemon=True).start()
-    threading.Thread(target=install_status_monitor, daemon=True).start()
