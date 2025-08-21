@@ -4,7 +4,7 @@ import logging
 
 from config import LOCAL_OFFSET, ANSIBLE_FILES_DIR
 from db_utils import get_db
-from services import get_install_status, sync_inventory_hosts
+from services import get_ansible_mark, sync_inventory_hosts
 
 web_bp = Blueprint('web', __name__)
 
@@ -41,11 +41,11 @@ def dashboard():
         mac, ip, stage, details, ts_utc, ipxe_utc, db_is_online = row
         last_seen = datetime.datetime.fromisoformat(ts_utc) + LOCAL_OFFSET
         is_online = bool(db_is_online)
-        install_result = get_install_status(ip)
-        install_status = install_result.get('status')
-        if install_status == 'completed':
+        ansible_result = get_ansible_mark(ip)
+        ansible_status = ansible_result.get('status')
+        if ansible_status == 'ok':
             try:
-                install_date_str = install_result['install_date']
+                install_date_str = ansible_result['install_date']
                 install_dt = datetime.datetime.fromisoformat(
                     install_date_str.replace('Z', '+00:00')
                 )
@@ -55,17 +55,18 @@ def dashboard():
                     datetime.timezone.utc
                 ) + LOCAL_OFFSET
                 date_str = install_dt.strftime('%d.%m.%Y %H:%M')
-                stage_label = f'✅ Установка: {date_str}'
+                version = ansible_result.get('version', '')
+                stage_label = f'✅ Ansible: {date_str}'
+                if version:
+                    stage_label += f' (v{version})'
             except Exception as e:
                 logging.warning(
-                    f"Ошибка парсинга даты install_status.json для {ip}: {e}"
+                    f"Ошибка парсинга даты в ansible_mark.json для {ip}: {e}"
                 )
-                stage_label = '✅ Установка: завершена'
-        elif install_status == 'failed':
-            stage_label = '❌ Установка: ошибка'
-        elif install_status == 'pending':
-            label = STAGE_LABELS.get(stage, '—') + ' ⏳ Установка: в процессе'
-            date_str = install_result.get('install_date')
+                stage_label = '✅ Ansible: завершён (дата неизвестна)'
+        elif ansible_status == 'pending':
+            label = STAGE_LABELS.get(stage, '—') + ' ⏳ Ansible: в процессе'
+            date_str = ansible_result.get('install_date')
             if date_str:
                 try:
                     install_dt = datetime.datetime.fromisoformat(
@@ -93,9 +94,9 @@ def dashboard():
         total_hosts += 1
         if is_online:
             online_count += 1
-        if stage == 'debian_install' or install_status == 'pending':
+        if stage == 'debian_install' or ansible_status == 'pending':
             installing_count += 1
-        if install_status == 'completed':
+        if ansible_status == 'ok':
             completed_count += 1
     return render_template(
         'dashboard.html',
