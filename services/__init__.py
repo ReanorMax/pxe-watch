@@ -1,17 +1,8 @@
 import os
 import logging
-import subprocess
 import datetime
 import re
-import json
-from typing import Optional
 from flask import jsonify, abort, request
-
-from config import (
-    SSH_PASSWORD,
-    SSH_USER,
-    SSH_OPTIONS,
-)
 from db_utils import get_db
 
 
@@ -114,11 +105,15 @@ def sync_inventory_hosts() -> None:
         logging.warning(f"Не удалось синхронизировать инвентарь: {e}")
 
 
-def set_playbook_status(ip: str, status: str) -> None:
-    """Сохранить статус выполнения playbook для указанного IP."""
+def set_playbook_status(ip: str, status: str, updated: str | None = None) -> None:
+    """Сохранить статус выполнения playbook для указанного IP.
+
+    Параметр ``updated`` позволяет передать время завершения операции в
+    формате ISO. Если он не указан, используется текущее время."""
     try:
         with get_db() as db:
-            now = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+            if updated is None:
+                updated = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
             db.execute(
                 """
                 INSERT INTO playbook_status (ip, status, updated)
@@ -127,22 +122,13 @@ def set_playbook_status(ip: str, status: str) -> None:
                     status = excluded.status,
                     updated = excluded.updated
                 """,
-                (ip, status, now),
+                (ip, status, updated),
             )
     except Exception as e:
         logging.error(f"Ошибка обновления статуса playbook для {ip}: {e}")
 
-def get_ansible_mark(ip: str):
-    """Fetch ``/opt/ansible_mark.json`` or fall back to stored status.
-
-    Returns a dict with at least a ``status`` field.  When the mark file is
-    unavailable but a status exists in the local database, the database value is
-    returned so that the dashboard can still reflect the final playbook result.
-    """
-    if not re.match(r'^\d{1,3}(\.\d{1,3}){3}$', ip) or ip == '—':
-        return {'status': 'error', 'msg': 'Invalid IP'}
-    db_status = None
-    db_updated = None
+def get_install_status(ip: str):
+    """Получить сохранённый статус установки для указанного IP."""
     try:
         with get_db() as db:
             row = db.execute(
@@ -150,74 +136,11 @@ def get_ansible_mark(ip: str):
                 (ip,),
             ).fetchone()
         if row:
-            db_status = row['status']
-            db_updated = row['updated']
-
-        cmd = (
-            f"sshpass -p '{SSH_PASSWORD}' ssh {SSH_OPTIONS} {SSH_USER}@{ip} "
-            "'cat /opt/ansible_mark.json'"
-        )
-        result = subprocess.run(
-            cmd, shell=True, capture_output=True, text=True, timeout=10
-        )
-        if result.returncode == 0:
-            try:
-                data = json.loads(result.stdout)
-                data['status'] = (data.get('status', 'ok') or 'ok').lower()
-                if data['status'] == 'success':
-                    data['status'] = 'ok'
-                # Once the mark file is successfully read we assume the
-                # playbook finished and update the stored status so that
-                # subsequent calls don't fall back to "running" when the host
-                # becomes unreachable.
-                try:
-                    set_playbook_status(ip, data['status'])
-                except Exception:
-                    # Updating the database is best-effort; any failure should
-                    # not prevent returning the fetched data.
-                    logging.exception(
-                        f"Не удалось сохранить статус playbook для {ip}"
-                    )
-                return data
-            except json.JSONDecodeError as e:
-                if db_status and db_updated:
-                    if db_status in ('ok', 'failed'):
-                        return {'status': db_status, 'install_date': db_updated}
-                    if db_status == 'running':
-                        return {'status': 'pending', 'install_date': db_updated}
-                return {
-                    'status': 'error',
-                    'msg': f'Некорректный JSON в mark.json: {str(e)}',
-                }
-
-        if db_status and db_updated:
-            if db_status in ('ok', 'failed'):
-                return {'status': db_status, 'install_date': db_updated}
-            if db_status == 'running':
-                return {'status': 'pending', 'install_date': db_updated}
-
-        if result.returncode != 0:
-            if "No such file" in result.stderr:
-                return {
-                    'status': 'none',
-                    'msg': 'Файл mark.json не найден',
-                }
-            return {'status': 'error', 'msg': f"SSH ошибка: {result.stderr.strip()}"}
-        return {'status': 'error', 'msg': 'Некорректный JSON в mark.json'}
-    except subprocess.TimeoutExpired:
-        if db_status and db_updated:
-            if db_status in ('ok', 'failed'):
-                return {'status': db_status, 'install_date': db_updated}
-            if db_status == 'running':
-                return {'status': 'pending', 'install_date': db_updated}
-        return {'status': 'error', 'msg': 'Таймаут подключения к хосту'}
+            return {'status': row['status'], 'install_date': row['updated']}
+        return {'status': 'pending'}
     except Exception as e:
-        if db_status and db_updated:
-            if db_status in ('ok', 'failed'):
-                return {'status': db_status, 'install_date': db_updated}
-            if db_status == 'running':
-                return {'status': 'pending', 'install_date': db_updated}
-        return {'status': 'error', 'msg': f'Внутренняя ошибка: {str(e)}'}
+        logging.error(f"Ошибка получения статуса установки для {ip}: {e}")
+        return {'status': 'error', 'msg': str(e)}
 
 
 def create_file_api_handlers(file_path_getter, allow_missing_get: bool = False, name_prefix: str = ""):
