@@ -132,6 +132,42 @@ def set_playbook_status(ip: str, status: str) -> None:
     except Exception as e:
         logging.error(f"Ошибка обновления статуса playbook для {ip}: {e}")
 
+
+def set_install_status(ip: str, status: str, completed_at: Optional[str]) -> None:
+    """Сохранить статус установки для указанного IP."""
+    try:
+        with get_db() as db:
+            now = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+            db.execute(
+                """
+                INSERT INTO install_status (ip, status, completed_at, updated)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(ip) DO UPDATE SET
+                    status = excluded.status,
+                    completed_at = excluded.completed_at,
+                    updated = excluded.updated
+                """,
+                (ip, status, completed_at, now),
+            )
+    except Exception as e:
+        logging.error(f"Ошибка обновления статуса установки для {ip}: {e}")
+
+
+def get_install_status(ip: str):
+    """Получить сохранённый статус установки из базы."""
+    try:
+        with get_db() as db:
+            row = db.execute(
+                "SELECT status, completed_at FROM install_status WHERE ip = ?",
+                (ip,),
+            ).fetchone()
+        if row:
+            return {'status': row['status'], 'install_date': row['completed_at']}
+        return {'status': 'pending'}
+    except Exception as e:
+        logging.error(f"Ошибка получения статуса установки для {ip}: {e}")
+        return {'status': 'error', 'msg': str(e)}
+
 def get_ansible_mark(ip: str):
     """Fetch ``/opt/ansible_mark.json`` or fall back to stored status.
 

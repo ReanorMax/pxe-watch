@@ -4,9 +4,11 @@ import subprocess
 import datetime
 import logging
 import re
+import json
 
 from db_utils import get_db
-from services import set_playbook_status
+from services import set_playbook_status, set_install_status
+from config import SSH_PASSWORD, SSH_USER, SSH_OPTIONS
 
 # Ensure background threads start only once
 _tasks_started = False
@@ -103,6 +105,65 @@ def ansible_log_monitor() -> None:
             time.sleep(5)
 
 
+def fetch_install_status(ip: str) -> None:
+    """Retrieve install_status.json from host and store it."""
+    cmd = (
+        f"sshpass -p '{SSH_PASSWORD}' ssh {SSH_OPTIONS} {SSH_USER}@{ip} "
+        "'cat /var/log/install_status.json'"
+    )
+    try:
+        result = subprocess.run(
+            cmd, shell=True, capture_output=True, text=True, timeout=10
+        )
+        if result.returncode == 0:
+            try:
+                data = json.loads(result.stdout or '{}')
+                status = (data.get('status') or '').lower()
+                completed_at = data.get('completed_at')
+                if status:
+                    set_install_status(ip, status, completed_at)
+                else:
+                    logging.warning(f"Пустой статус установки от {ip}")
+            except json.JSONDecodeError as e:
+                logging.warning(
+                    f"Некорректный JSON install_status от {ip}: {e}"
+                )
+        else:
+            if 'No such file' in result.stderr:
+                set_install_status(ip, 'pending', None)
+            else:
+                logging.warning(
+                    f"SSH ошибка при получении install_status от {ip}: {result.stderr.strip()}"
+                )
+    except subprocess.TimeoutExpired:
+        logging.warning(f"Таймаут при получении install_status от {ip}")
+    except Exception as e:
+        logging.error(f"Ошибка при получении install_status от {ip}: {e}")
+
+
+def install_status_monitor() -> None:
+    """Background task that checks install_status.json on hosts."""
+    while True:
+        time.sleep(60)
+        logging.info("Проверяем статусы установки на хостах...")
+        try:
+            with get_db() as db:
+                rows = db.execute(
+                    "SELECT DISTINCT ip FROM hosts WHERE ip != '—' AND ip IS NOT NULL"
+                ).fetchall()
+                ips = [row[0] for row in rows]
+            for ip in ips:
+                fetch_install_status(ip)
+                time.sleep(0.1)
+            logging.info(
+                f"Проверка статусов установки завершена. Проверено {len(ips)} хостов."
+            )
+        except Exception as e:
+            logging.error(
+                f"Ошибка в задаче мониторинга статуса установки: {e}", exc_info=True
+            )
+
+
 def start_background_tasks() -> None:
     """Start all background threads."""
     global _tasks_started
@@ -111,3 +172,4 @@ def start_background_tasks() -> None:
     _tasks_started = True
     threading.Thread(target=ping_hosts_background, daemon=True).start()
     threading.Thread(target=ansible_log_monitor, daemon=True).start()
+    threading.Thread(target=install_status_monitor, daemon=True).start()
