@@ -7,7 +7,7 @@ import json
 from flask import jsonify, abort, request
 
 from config import (
-    SSH_PASSWORD,
+    SSH_PASS,
     SSH_USER,
     SSH_OPTIONS,
     INSTALL_STATUS_PATH,
@@ -143,7 +143,7 @@ def get_install_status(ip: str):
     if not re.match(r'^\d{1,3}(\.\d{1,3}){3}$', ip) or ip == '—':
         return {'status': 'error', 'msg': 'Invalid IP'}
     cmd = (
-        f"sshpass -p '{SSH_PASSWORD}' ssh {SSH_OPTIONS} {SSH_USER}@{ip} "
+        f"sshpass -p {SSH_PASS} ssh {SSH_OPTIONS} {SSH_USER}@{ip} "
         f"'cat {INSTALL_STATUS_PATH}'"
     )
     try:
@@ -207,7 +207,7 @@ def get_ansible_mark(ip: str):
             db_updated = row['updated']
 
         cmd = (
-            f"sshpass -p '{SSH_PASSWORD}' ssh {SSH_OPTIONS} {SSH_USER}@{ip} "
+            f"sshpass -p {SSH_PASS} ssh {SSH_OPTIONS} {SSH_USER}@{ip} "
             "'cat /opt/ansible_mark.json'"
         )
         result = subprocess.run(
