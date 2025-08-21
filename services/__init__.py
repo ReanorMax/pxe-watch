@@ -175,6 +175,21 @@ def get_install_status(ip: str):
                 data = json.loads(result.stdout or '{}')
                 status = (data.get('status') or '').strip().lower()
                 completed_at = (data.get('completed_at') or '').strip() or None
+
+                # If "status" is missing, some installers may expose a
+                # boolean/flag field "completed" instead.  Interpret any
+                # truthy value of this field as a completed installation.
+                if not status:
+                    completed_flag = data.get('completed')
+                    if isinstance(completed_flag, str):
+                        completed_flag = completed_flag.strip().lower() in (
+                            '1', 'true', 'yes'
+                        )
+                    else:
+                        completed_flag = bool(completed_flag)
+                    if completed_flag:
+                        status = 'completed'
+
                 if status:
                     try:
                         set_install_status(ip, status, completed_at)
