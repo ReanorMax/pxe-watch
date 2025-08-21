@@ -55,16 +55,4 @@ def get_db():
         """
     )
 
-    # Results of OS installation from install_status.json
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS install_status (
-            ip TEXT PRIMARY KEY,
-            status TEXT,
-            completed_at TEXT,
-            checked_at TEXT
-        )
-        """
-    )
-
     return conn
