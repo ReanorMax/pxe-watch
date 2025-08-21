@@ -132,6 +132,26 @@ def set_playbook_status(ip: str, status: str) -> None:
     except Exception as e:
         logging.error(f"Ошибка обновления статуса playbook для {ip}: {e}")
 
+
+def set_install_status(ip: str, status: str, completed_at: Optional[str]) -> None:
+    """Сохранить результат установки из install_status.json."""
+    try:
+        with get_db() as db:
+            now = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+            db.execute(
+                """
+                INSERT INTO install_status (ip, status, completed_at, checked_at)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(ip) DO UPDATE SET
+                    status = excluded.status,
+                    completed_at = excluded.completed_at,
+                    checked_at = excluded.checked_at
+                """,
+                (ip, status, completed_at, now),
+            )
+    except Exception as e:
+        logging.error(f"Ошибка обновления install_status для {ip}: {e}")
+
 def get_ansible_mark(ip: str):
     """Fetch ``/opt/ansible_mark.json`` or fall back to stored status.
 

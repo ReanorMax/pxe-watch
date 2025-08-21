@@ -4,9 +4,11 @@ import subprocess
 import datetime
 import logging
 import re
+import json
 
 from db_utils import get_db
-from services import set_playbook_status
+from services import set_playbook_status, set_install_status
+from config import SSH_PASSWORD, SSH_USER, SSH_OPTIONS, INSTALL_STATUS_PATH
 
 # Ensure background threads start only once
 _tasks_started = False
@@ -103,6 +105,68 @@ def ansible_log_monitor() -> None:
             time.sleep(5)
 
 
+def check_install_status_background() -> None:
+    """Периодически проверяет install_status.json на хостах."""
+    while True:
+        time.sleep(60)
+        logging.info("Начинаем проверку install_status.json на хостах...")
+        try:
+            with get_db() as db:
+                rows = db.execute(
+                    "SELECT DISTINCT ip FROM hosts WHERE ip != '—' AND ip IS NOT NULL"
+                ).fetchall()
+                ips = [row[0] for row in rows]
+            for ip in ips:
+                try:
+                    cmd = (
+                        f"sshpass -p '{SSH_PASSWORD}' ssh {SSH_OPTIONS} {SSH_USER}@{ip} "
+                        f"'cat {INSTALL_STATUS_PATH}'"
+                    )
+                    result = subprocess.run(
+                        cmd,
+                        shell=True,
+                        capture_output=True,
+                        text=True,
+                        timeout=10,
+                    )
+                    if result.returncode == 0:
+                        try:
+                            data = json.loads(result.stdout)
+                            status = (data.get('status') or '').lower()
+                            completed_at = data.get('completed_at')
+                            if status:
+                                set_install_status(ip, status, completed_at)
+                                continue
+                            set_install_status(ip, 'error', None)
+                        except json.JSONDecodeError:
+                            logging.warning(
+                                f"Некорректный JSON install_status.json на {ip}"
+                            )
+                            set_install_status(ip, 'error', None)
+                    else:
+                        stderr = result.stderr or ''
+                        if 'No such file' in stderr:
+                            set_install_status(ip, 'pending', None)
+                        else:
+                            set_install_status(ip, 'error', None)
+                except subprocess.TimeoutExpired:
+                    set_install_status(ip, 'error', None)
+                except Exception as e:
+                    logging.error(
+                        f"Ошибка проверки install_status на {ip}: {e}", exc_info=True
+                    )
+                    set_install_status(ip, 'error', None)
+                time.sleep(0.1)
+            logging.info(
+                f"Проверка install_status.json завершена. Проверено {len(ips)} хостов."
+            )
+        except Exception as e:
+            logging.error(
+                f"Ошибка в фоновой задаче проверки install_status.json: {e}",
+                exc_info=True,
+            )
+
+
 def start_background_tasks() -> None:
     """Start all background threads."""
     global _tasks_started
@@ -111,3 +175,4 @@ def start_background_tasks() -> None:
     _tasks_started = True
     threading.Thread(target=ping_hosts_background, daemon=True).start()
     threading.Thread(target=ansible_log_monitor, daemon=True).start()
+    threading.Thread(target=check_install_status_background, daemon=True).start()
