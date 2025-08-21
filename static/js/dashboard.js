@@ -46,7 +46,41 @@
             }
         });
     }
-    document.addEventListener('DOMContentLoaded', updatePortainerLinks);
+    async function updateInstallStatuses() {
+        const rows = document.querySelectorAll('#hosts-table-body tr');
+        for (const row of rows) {
+            const ip = row.dataset.ip;
+            const cell = row.querySelector('.install-status');
+            if (!cell) continue;
+            if (!ip || ip === '—') {
+                cell.innerHTML = '<span class="status-none">—</span>';
+                continue;
+            }
+            try {
+                const res = await fetch(`/api/host/install_status?ip=${encodeURIComponent(ip)}`);
+                if (!res.ok) throw new Error();
+                const data = await res.json();
+                const st = (data.status || '').toLowerCase();
+                if (st === 'ok') {
+                    cell.innerHTML = '<span class="status-ok">OK</span>';
+                } else if (st === 'error') {
+                    const msg = data.msg ? ` (${data.msg})` : '';
+                    cell.innerHTML = `<span class="status-error">error${msg}</span>`;
+                } else if (st === 'none') {
+                    cell.innerHTML = '<span class="status-none">—</span>';
+                } else {
+                    cell.innerHTML = `<span class="status-pending">${st || 'pending'}</span>`;
+                }
+            } catch (e) {
+                cell.innerHTML = '<span class="status-error">error</span>';
+            }
+        }
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+        updatePortainerLinks();
+        updateInstallStatuses();
+        setInterval(updateInstallStatuses, 10000);
+    });
     async function openModalWithContent(modalId, apiUrl, contentElementId, isPlaybook = false) {
       const modal = document.getElementById(modalId);
       try {
