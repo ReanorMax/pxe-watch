@@ -6,7 +6,7 @@ import logging
 import re
 
 from db_utils import get_db
-from services import set_playbook_status
+from services import set_playbook_status, check_install_status
 
 # Ensure background threads start only once
 _tasks_started = False
@@ -64,6 +64,29 @@ def ping_hosts_background():
             logging.error(f"Ошибка в фоновой задаче пинга: {e}", exc_info=True)
 
 
+def install_status_checker() -> None:
+    """Фоновая задача проверки install_status.json на всех хостах."""
+    while True:
+        time.sleep(60)
+        logging.info("Проверка файлов install_status...")
+        try:
+            with get_db() as db:
+                rows = db.execute(
+                    "SELECT DISTINCT ip FROM hosts WHERE ip != '—' AND ip IS NOT NULL"
+                ).fetchall()
+                ips = [row[0] for row in rows]
+            for ip in ips:
+                check_install_status(ip)
+                time.sleep(0.1)
+            logging.info(
+                f"Проверка install_status завершена. Обработано {len(ips)} хостов."
+            )
+        except Exception as e:
+            logging.error(
+                f"Ошибка в задаче проверки install_status: {e}", exc_info=True
+            )
+
+
 def ansible_log_monitor() -> None:
     """Tail Ansible service logs and update playbook status by host."""
     pattern = re.compile(
@@ -110,4 +133,5 @@ def start_background_tasks() -> None:
         return
     _tasks_started = True
     threading.Thread(target=ping_hosts_background, daemon=True).start()
+    threading.Thread(target=install_status_checker, daemon=True).start()
     threading.Thread(target=ansible_log_monitor, daemon=True).start()
