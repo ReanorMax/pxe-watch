@@ -21,6 +21,6 @@ SSH_PASSWORD = os.getenv('SSH_PASSWORD', '')
 SSH_USER = os.getenv('SSH_USER', 'root')
 SSH_OPTIONS = os.getenv(
     'SSH_OPTIONS',
-    '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+    '-o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null'
 )
 INSTALL_STATUS_PATH = os.getenv('INSTALL_STATUS_PATH', '/var/log/install_status.json')
