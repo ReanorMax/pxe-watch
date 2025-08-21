@@ -162,7 +162,9 @@ def get_install_status(ip: str):
                 (ip,),
             ).fetchone()
         if row:
-            return {'status': row['status'], 'install_date': row['completed_at']}
+            status = (row['status'] or '').strip().lower()
+            completed_at = (row['completed_at'] or '').strip() or None
+            return {'status': status or 'pending', 'install_date': completed_at}
         return {'status': 'pending'}
     except Exception as e:
         logging.error(f"Ошибка получения статуса установки для {ip}: {e}")

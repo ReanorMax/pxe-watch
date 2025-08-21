@@ -118,8 +118,8 @@ def fetch_install_status(ip: str) -> None:
         if result.returncode == 0:
             try:
                 data = json.loads(result.stdout or '{}')
-                status = (data.get('status') or '').lower()
-                completed_at = data.get('completed_at')
+                status = (data.get('status') or '').strip().lower()
+                completed_at = (data.get('completed_at') or '').strip() or None
                 if status:
                     set_install_status(ip, status, completed_at)
                 else:
