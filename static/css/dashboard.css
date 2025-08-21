@@ -166,7 +166,3 @@
     .header-group { display: flex; gap: 8px; align-items: center; }
     .divider { width: 1px; height: 24px; background: var(--divider); margin: 0 12px; }
     .actions-cell { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
-    .status-ok { color: var(--green); font-weight: 600; }
-    .status-error { color: var(--danger); font-weight: 600; }
-    .status-pending { color: var(--orange); font-weight: 600; }
-    .status-none { color: var(--grey); }
