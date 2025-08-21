@@ -65,7 +65,6 @@
           <th>MAC</th>
           <th>IP</th>
           <th>Last Seen</th>
-          <th>Install</th>
           <th>GUI</th>
           <th>Действия</th>
         </tr>
@@ -76,7 +75,6 @@
           <td>{{ h.mac }}</td>
           <td>{{ h.ip }}</td>
           <td><time datetime="{{ h.last }}">{{ h.last }}</time></td>
-          <td class="install-status"></td>
           <td>
             <a class="btn-portainer portainer-link" href="http://{{ h.ip }}:9000" target="_blank" rel="noopener noreferrer" title="Portainer" style="display: {% if h.ip and h.ip != '—' %}inline-flex{% else %}none{% endif %};">
               <i class="fab fa-docker"></i> Portainer

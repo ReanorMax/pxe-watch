@@ -23,4 +23,3 @@ SSH_OPTIONS = os.getenv(
     'SSH_OPTIONS',
     '-o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/dev/null'
 )
-INSTALL_STATUS_PATH = os.getenv('INSTALL_STATUS_PATH', '/var/log/install_status.json')

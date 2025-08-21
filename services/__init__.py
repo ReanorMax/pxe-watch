@@ -10,7 +10,6 @@ from config import (
     SSH_PASSWORD,
     SSH_USER,
     SSH_OPTIONS,
-    INSTALL_STATUS_PATH,
 )
 from db_utils import get_db
 
@@ -132,57 +131,6 @@ def set_playbook_status(ip: str, status: str) -> None:
     except Exception as e:
         logging.error(f"Ошибка обновления статуса playbook для {ip}: {e}")
 
-
-
-def get_install_status(ip: str):
-    """Fetch remote ``install_status.json`` and update playbook status.
-
-    Returns a dict with at least a ``status`` field. When the file exists and
-    reports ``completed``, the host is marked as ``ok`` in the local database.
-    """
-    if not re.match(r'^\d{1,3}(\.\d{1,3}){3}$', ip) or ip == '—':
-        return {'status': 'error', 'msg': 'Invalid IP'}
-    cmd = (
-        f"sshpass -p '{SSH_PASSWORD}' ssh {SSH_OPTIONS} {SSH_USER}@{ip} "
-        f"'cat {INSTALL_STATUS_PATH}'"
-    )
-    try:
-        result = subprocess.run(
-            cmd, shell=True, capture_output=True, text=True, timeout=10
-        )
-        if result.returncode != 0:
-            if 'No such file' in result.stderr:
-                return {
-                    'status': 'none',
-                    'msg': 'Файл install_status.json не найден',
-                }
-            return {
-                'status': 'error',
-                'msg': f"SSH ошибка: {result.stderr.strip()}",
-            }
-        data = json.loads(result.stdout)
-        raw_status = (data.get('status') or '').lower()
-        install_date = data.get('completed_at')
-        if raw_status == 'completed':
-            try:
-                set_playbook_status(ip, 'ok')
-            except Exception:
-                logging.exception(
-                    f"Не удалось сохранить статус playbook для {ip}"
-                )
-            return {'status': 'ok', 'install_date': install_date}
-        if raw_status:
-            return {'status': raw_status, 'install_date': install_date}
-        return {'status': 'pending', 'install_date': install_date}
-    except subprocess.TimeoutExpired:
-        return {'status': 'error', 'msg': 'Таймаут подключения к хосту'}
-    except json.JSONDecodeError as e:
-        return {
-            'status': 'error',
-            'msg': f'Некорректный JSON в install_status.json: {str(e)}',
-        }
-    except Exception as e:
-        return {'status': 'error', 'msg': f'Внутренняя ошибка: {str(e)}'}
 
 
 def get_ansible_mark(ip: str):
