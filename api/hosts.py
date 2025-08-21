@@ -5,7 +5,7 @@ import threading
 import re
 
 from config import (
-    SSH_PASS,
+    SSH_PASSWORD,
     SSH_USER,
     SSH_OPTIONS,
     ANSIBLE_PLAYBOOK,
@@ -119,7 +119,7 @@ def api_host_reboot():
     if not ip or ip == '—':
         return jsonify({'status': 'error', 'msg': 'Неверный IP-адрес'}), 400
     try:
-        cmd = f"sshpass -p {SSH_PASS} ssh {SSH_OPTIONS} {SSH_USER}@{ip} 'reboot'"
+        cmd = f"sshpass -p '{SSH_PASSWORD}' ssh {SSH_OPTIONS} {SSH_USER}@{ip} 'reboot'"
         subprocess.run(cmd, shell=True, check=True, timeout=10, capture_output=True, text=True)
         logging.info(f'Команда перезагрузки отправлена на {ip}')
         return jsonify({'status': 'ok', 'msg': f'Команда перезагрузки отправлена на {ip}'}), 200
@@ -171,7 +171,7 @@ def api_host_shutdown():
     if not ip or ip == '—':
         return jsonify({'status': 'error', 'msg': 'Неверный IP-адрес'}), 400
     try:
-        cmd = f"sshpass -p {SSH_PASS} ssh {SSH_OPTIONS} {SSH_USER}@{ip} 'shutdown -h now'"
+        cmd = f"sshpass -p '{SSH_PASSWORD}' ssh {SSH_OPTIONS} {SSH_USER}@{ip} 'shutdown -h now'"
         result = subprocess.run(cmd, shell=True, check=True, timeout=10, capture_output=True, text=True)
         logging.info(f'Команда выключения отправлена на {ip}')
         msg = f'Команда выключения отправлена на {ip}'
