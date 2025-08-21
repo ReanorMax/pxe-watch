@@ -4,8 +4,6 @@ import subprocess
 import logging
 import re
 
-from db_utils import get_db
-
 from config import (
     ANSIBLE_PLAYBOOK,
     ANSIBLE_INVENTORY,
@@ -15,7 +13,6 @@ from config import (
 from . import api_bp
 from services import (
     list_files_in_dir,
-    get_install_status,
     create_file_api_handlers,
 )
 
@@ -81,13 +78,6 @@ def api_ansible_templates_list():
     except Exception as e:
         logging.error(f"Ошибка при получении списка шаблонов: {e}")
         return jsonify({'error': str(e)}), 500
-
-@api_bp.route('/install/status/<ip>', methods=['GET'])
-def api_install_status(ip: str):
-    """Return stored installation status for host."""
-    result = get_install_status(ip)
-    return jsonify(result)
-
 
 @api_bp.route('/logs/ansible', methods=['GET'])
 def api_logs_ansible():

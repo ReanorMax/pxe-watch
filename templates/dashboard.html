@@ -59,32 +59,12 @@
     <div class="log-viewer" id="ansible-log"></div>
   </div>
   <div class="container">
-    <div class="stats-container">
-      <div class="stat-card total">
-        <div class="stat-number">{{ total_hosts }}</div>
-        <div class="stat-label">TOTAL HOSTS</div>
-      </div>
-      <div class="stat-card online">
-        <div class="stat-number">{{ online_hosts }}</div>
-        <div class="stat-label">ONLINE</div>
-      </div>
-      <div class="stat-card installing">
-        <div class="stat-number">{{ installing_hosts }}</div>
-        <div class="stat-label">INSTALLING</div>
-      </div>
-      <div class="stat-card completed">
-        <div class="stat-number">{{ completed_hosts }}</div>
-        <div class="stat-label">COMPLETED</div>
-      </div>
-    </div>
     <table>
       <thead>
         <tr>
           <th>MAC</th>
           <th>IP</th>
-          <th>Статус</th>
           <th>Last Seen</th>
-          <th>Состояние</th>
           <th>GUI</th>
           <th>Действия</th>
         </tr>
@@ -94,12 +74,7 @@
         <tr data-ip="{{ h.ip }}" data-mac="{{ h.mac }}">
           <td>{{ h.mac }}</td>
           <td>{{ h.ip }}</td>
-          <td>{{ h.stage }}</td>
           <td><time datetime="{{ h.last }}">{{ h.last }}</time></td>
-          <td class="status {{ 'online' if h.online else 'offline' }}">
-            <i class="fa fa-circle"></i>
-            <span>{{ 'Online' if h.online else 'Offline' }}</span>
-          </td>
           <td>
             <a class="btn-portainer portainer-link" href="http://{{ h.ip }}:9000" target="_blank" rel="noopener noreferrer" title="Portainer" style="display: {% if h.ip and h.ip != '—' %}inline-flex{% else %}none{% endif %};">
               <i class="fab fa-docker"></i> Portainer

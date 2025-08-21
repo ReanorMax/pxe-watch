@@ -19,7 +19,7 @@ def get_db():
     conn = sqlite3.connect(DB_PATH, detect_types=sqlite3.PARSE_DECLTYPES)
     conn.row_factory = sqlite3.Row
 
-    # Table with host info and current installation stage
+    # Table with host info
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS hosts (
@@ -33,35 +33,12 @@ def get_db():
         """
     )
 
-    # Store ping results to track host online status
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS host_status (
-            ip TEXT PRIMARY KEY,
-            is_online BOOLEAN,
-            last_checked TEXT
-        )
-        """
-    )
-
     # Status of Ansible playbook execution
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS playbook_status (
             ip TEXT PRIMARY KEY,
             status TEXT,
-            updated TEXT
-        )
-        """
-    )
-
-    # Installation status reported by target hosts
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS install_status (
-            ip TEXT PRIMARY KEY,
-            status TEXT,
-            completed_at TEXT,
             updated TEXT
         )
         """
