@@ -117,14 +117,6 @@
     .btn-logtail:hover { background: #7b1fa2; }
     .btn-logtail i { font-size: 0.9em; }
     .container { padding: 24px; }
-    .stats-container { display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
-    .stat-card { flex: 1; min-width: 120px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px; text-align: center; box-shadow: var(--table-shadow); }
-    .stat-number { font-size: 1.8em; font-weight: 700; margin-bottom: 4px; }
-    .stat-label { font-size: 0.85em; font-weight: 600; color: var(--grey); letter-spacing: 1px; }
-    .stat-card.total .stat-number { color: var(--accent); }
-    .stat-card.online .stat-number { color: var(--green); }
-    .stat-card.installing .stat-number { color: var(--orange); }
-    .stat-card.completed .stat-number { color: var(--green); }
     table {
       width: 100%;
       border-collapse: collapse;
@@ -145,12 +137,6 @@
     @media (prefers-color-scheme: dark) {
       tr:hover { background-color: rgba(255,255,255,0.05); }
     }
-    .status { font-weight: 600; display: flex; align-items: center; gap: 6px; }
-    .status.online { color: var(--green); }
-    .status.offline { color: var(--grey); }
-    .status.running { color: var(--orange); }
-    .status.failed { color: var(--danger); }
-    .status.unknown { color: var(--grey); }
     #overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; z-index: 1000; }
     .modal { position: fixed; top: 0; right: 0; width: 50vw; height: 100vh; background: var(--bg); z-index: 1001; display: none; flex-direction: column; box-shadow: -4px 0 12px rgba(0,0,0,0.3); }
     .modal header { background: var(--accent); color: #fff; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }

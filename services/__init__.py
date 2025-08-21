@@ -4,7 +4,6 @@ import subprocess
 import datetime
 import re
 import json
-from typing import Optional
 from flask import jsonify, abort, request
 
 from config import (
@@ -133,91 +132,6 @@ def set_playbook_status(ip: str, status: str) -> None:
         logging.error(f"Ошибка обновления статуса playbook для {ip}: {e}")
 
 
-def set_install_status(ip: str, status: str, completed_at: Optional[str]) -> None:
-    """Сохранить статус установки для указанного IP."""
-    try:
-        with get_db() as db:
-            now = datetime.datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
-            db.execute(
-                """
-                INSERT INTO install_status (ip, status, completed_at, updated)
-                VALUES (?, ?, ?, ?)
-                ON CONFLICT(ip) DO UPDATE SET
-                    status = excluded.status,
-                    completed_at = excluded.completed_at,
-                    updated = excluded.updated
-                """,
-                (ip, status, completed_at, now),
-            )
-    except Exception as e:
-        logging.error(f"Ошибка обновления статуса установки для {ip}: {e}")
-
-
-def get_install_status(ip: str):
-    """Получить текущий статус установки с удалённого хоста.
-
-    При каждом запросе выполняет попытку чтения ``/var/log/install_status.json``
-    по SSH.  Полученный статус сохраняется в локальной БД и возвращается
-    вызывающему коду.  Если чтение файла не удалось, используется последняя
-    сохранённая запись из базы данных, либо ``pending``.
-    """
-
-    cmd = (
-        f"sshpass -p '{SSH_PASSWORD}' ssh {SSH_OPTIONS} {SSH_USER}@{ip} "
-        "'cat /var/log/install_status.json'"
-    )
-    try:
-        result = subprocess.run(
-            cmd, shell=True, capture_output=True, text=True, timeout=10
-        )
-        if result.returncode == 0:
-            try:
-                data = json.loads(result.stdout or '{}')
-                status = (data.get('status') or '').strip().lower()
-                completed_at = (data.get('completed_at') or '').strip() or None
-                if not status and data:
-                    # Treat any JSON content as a completed installation
-                    status = 'completed'
-                if status:
-                    try:
-                        set_install_status(ip, status, completed_at)
-                    except Exception as e:
-                        logging.warning(
-                            f"Не удалось сохранить статус установки для {ip}: {e}"
-                        )
-                    return {'status': status, 'install_date': completed_at}
-                logging.warning(f"Пустой статус установки от {ip}")
-            except json.JSONDecodeError as e:
-                logging.warning(
-                    f"Некорректный JSON install_status от {ip}: {e}"
-                )
-        else:
-            if 'No such file' in (result.stderr or ''):
-                set_install_status(ip, 'pending', None)
-                return {'status': 'pending'}
-            logging.warning(
-                f"SSH ошибка при получении install_status от {ip}: {result.stderr.strip()}"
-            )
-    except subprocess.TimeoutExpired:
-        logging.warning(f"Таймаут при получении install_status от {ip}")
-    except Exception as e:
-        logging.error(f"Ошибка при получении install_status от {ip}: {e}")
-
-    # Фолбэк: возвращаем последнее сохранённое значение из базы
-    try:
-        with get_db() as db:
-            row = db.execute(
-                "SELECT status, completed_at FROM install_status WHERE ip = ?",
-                (ip,),
-            ).fetchone()
-        if row:
-            status = (row['status'] or '').strip().lower()
-            completed_at = (row['completed_at'] or '').strip() or None
-            return {'status': status or 'pending', 'install_date': completed_at}
-        return {'status': 'pending'}
-    except Exception as e:
-        logging.error(f"Ошибка получения статуса установки для {ip}: {e}")
-        return {'status': 'error', 'msg': str(e)}
 
 def get_ansible_mark(ip: str):
     """Fetch ``/opt/ansible_mark.json`` or fall back to stored status.
