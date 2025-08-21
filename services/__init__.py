@@ -175,6 +175,9 @@ def get_install_status(ip: str):
                 data = json.loads(result.stdout or '{}')
                 status = (data.get('status') or '').strip().lower()
                 completed_at = (data.get('completed_at') or '').strip() or None
+                if not status and data:
+                    # Treat any JSON content as a completed installation
+                    status = 'completed'
                 if status:
                     try:
                         set_install_status(ip, status, completed_at)

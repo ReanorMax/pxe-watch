@@ -120,6 +120,9 @@ def fetch_install_status(ip: str) -> None:
                 data = json.loads(result.stdout or '{}')
                 status = (data.get('status') or '').strip().lower()
                 completed_at = (data.get('completed_at') or '').strip() or None
+                if not status and data:
+                    # The presence of any JSON is treated as completion
+                    status = 'completed'
                 if status:
                     set_install_status(ip, status, completed_at)
                 else:
