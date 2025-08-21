@@ -15,7 +15,7 @@ from config import (
 from . import api_bp
 from services import (
     list_files_in_dir,
-    get_ansible_mark,
+    get_install_status,
     create_file_api_handlers,
 )
 
@@ -84,7 +84,7 @@ def api_ansible_templates_list():
 
 @api_bp.route('/ansible/status/<ip>', methods=['GET'])
 def api_ansible_status(ip: str):
-    result = get_ansible_mark(ip)
+    result = get_install_status(ip)
     return jsonify(result)
 
 
