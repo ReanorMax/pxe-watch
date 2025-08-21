@@ -61,7 +61,7 @@ def dashboard():
                     f"Ошибка парсинга даты установки для {ip}: {e}"
                 )
                 stage_label = '✅ Установка: завершена (дата неизвестна)'
-        elif install_status == 'pending':
+        elif install_status == 'in_progress':
             stage_label = STAGE_LABELS.get(stage, '—') + ' ⏳ Установка: в процессе'
         elif install_status == 'failed':
             stage_label = '❌ Установка: ошибка'
@@ -78,7 +78,7 @@ def dashboard():
         total_hosts += 1
         if is_online:
             online_count += 1
-        if stage == 'debian_install' or install_status == 'pending':
+        if stage == 'debian_install' or install_status == 'in_progress':
             installing_count += 1
         if install_status == 'completed':
             completed_count += 1

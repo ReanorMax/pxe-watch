@@ -154,21 +154,40 @@ def set_install_status(ip: str, status: str, completed_at: Optional[str]) -> Non
 
 
 def get_install_status(ip: str):
-    """Получить сохранённый статус установки из базы."""
+    """Прочитать ``install_status.json`` на хосте через SSH."""
+    if not re.match(r'^\d{1,3}(\.\d{1,3}){3}$', ip) or ip == '—':
+        return {'status': 'error', 'msg': 'Invalid IP'}
+
+    cmd = (
+        f"sshpass -p '{SSH_PASSWORD}' ssh {SSH_OPTIONS} {SSH_USER}@{ip} "
+        "'cat /var/log/install_status.json'"
+    )
     try:
-        with get_db() as db:
-            row = db.execute(
-                "SELECT status, completed_at FROM install_status WHERE ip = ?",
-                (ip,),
-            ).fetchone()
-        if row:
-            status = (row['status'] or '').strip().lower()
-            completed_at = (row['completed_at'] or '').strip() or None
-            return {'status': status or 'pending', 'install_date': completed_at}
-        return {'status': 'pending'}
+        result = subprocess.run(
+            cmd, shell=True, capture_output=True, text=True, timeout=10
+        )
+        if result.returncode == 0:
+            try:
+                data = json.loads(result.stdout or '{}')
+                status = (data.get('status') or '').strip().lower()
+                completed_at = (data.get('completed_at') or '').strip() or None
+                if status in {'completed', 'failed', 'in_progress'}:
+                    return {'status': status, 'install_date': completed_at}
+            except json.JSONDecodeError as e:
+                logging.warning(
+                    f"Некорректный JSON install_status от {ip}: {e}"
+                )
+        else:
+            if 'No such file' not in (result.stderr or ''):
+                logging.warning(
+                    f"SSH ошибка при получении install_status от {ip}: {result.stderr.strip()}"
+                )
+    except subprocess.TimeoutExpired:
+        logging.warning(f"Таймаут при получении install_status от {ip}")
     except Exception as e:
-        logging.error(f"Ошибка получения статуса установки для {ip}: {e}")
-        return {'status': 'error', 'msg': str(e)}
+        logging.error(f"Ошибка при получении install_status от {ip}: {e}")
+
+    return {'status': 'in_progress'}
 
 def get_ansible_mark(ip: str):
     """Fetch ``/opt/ansible_mark.json`` or fall back to stored status.
