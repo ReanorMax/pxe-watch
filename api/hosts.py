@@ -13,7 +13,7 @@ from config import (
 )
 from . import api_bp
 from services.registration import register_host
-from services import set_playbook_status
+from services import set_playbook_status, get_install_status
 
 
 def parse_playbook_summary(output: str) -> dict[str, str]:
@@ -193,3 +193,16 @@ def api_host_shutdown():
         msg = f'Неизвестная ошибка при отправке команды выключения на {ip}: {e}'
         logging.error(msg, exc_info=True)
         return jsonify({'status': 'error', 'msg': msg}), 500
+
+
+@api_bp.route('/host/install_status', methods=['GET'])
+def api_host_install_status():
+    """Return installation status for a host by IP."""
+    ip = request.args.get('ip')
+    if not ip or ip == '—':
+        return jsonify({'status': 'error', 'msg': 'Неверный IP-адрес'}), 400
+    try:
+        return jsonify(get_install_status(ip)), 200
+    except Exception as e:
+        logging.error(f'Ошибка получения install_status для {ip}: {e}')
+        return jsonify({'status': 'error', 'msg': str(e)}), 500
