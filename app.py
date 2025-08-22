@@ -1,7 +1,6 @@
 import logging
 from flask import Flask
 
-from logtail import logtail_bp
 from api import api_bp
 from web import web_bp
 from tasks import start_background_tasks
@@ -13,7 +12,6 @@ def create_app() -> Flask:
     app = Flask(__name__, static_folder='static')
     app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 3600
 
-    app.register_blueprint(logtail_bp)
     app.register_blueprint(api_bp)
     app.register_blueprint(web_bp)
     start_background_tasks()
