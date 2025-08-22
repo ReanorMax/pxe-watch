@@ -1,336 +1,371 @@
 #!/usr/bin/env python3
+"""Blueprint providing log tailing and journal features.
+
+This module is adapted from standalone logtail.py to be used as part of the
+main PXE panel.  It exposes routes under the same application so that
+monitoring logs and journal of remote hosts is available from a single panel.
 """
-logtail.py  – Flask-бекенд + пароль-SSH
-pip install flask
-apt install sshpass
-"""
-import os, shlex, sqlite3, json, subprocess, re, time
+
+import os
+import shlex
+import sqlite3
+import json
+import subprocess
+import re
 import html
-from pathlib import Path
 from datetime import datetime
-import threading  # Для кэширования
 
-from flask import Blueprint, Flask, request, jsonify, send_from_directory, current_app
+from flask import (
+    Blueprint,
+    request,
+    jsonify,
+    current_app,
+    render_template,
+)
+from config import ANSIBLE_INVENTORY
 
-# --- Конфигурация ---
-INI_FILE   = os.environ.get('LOGTAIL_INI_FILE', '/root/ansible/inventory.ini')
-DB_FILE    = os.environ.get('LOGTAIL_DB_FILE', 'logtail.sqlite')
-STATIC_DIR = os.path.dirname(__file__) or '.'
+# ---------------------------------------------------------------------------
+# Константы и настройки
+# ---------------------------------------------------------------------------
+INI_FILE = ANSIBLE_INVENTORY
+DB_FILE = "logtail.sqlite"
 
-# --- Глобальный кэш инвентаря ---
-_inventory_cache = {}
-_inventory_cache_lock = threading.Lock()
+logtail_bp = Blueprint("logtail", __name__)
 
-# --------------------------------------------------
-# helpers
-# --------------------------------------------------
-def get_db():
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+def get_logtail_db():
+    """Return connection to local sqlite database used by log viewer."""
     conn = sqlite3.connect(DB_FILE, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     return conn
 
-def init_db():
-    with get_db() as db:
-        db.execute("""CREATE TABLE IF NOT EXISTS host_logpaths
-                      (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                       host TEXT NOT NULL,
-                       path TEXT NOT NULL,
-                       name TEXT NOT NULL DEFAULT '',
-                       UNIQUE(host, path))""")
-        db.execute("""CREATE TABLE IF NOT EXISTS color_rules
-                      (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                       host TEXT NOT NULL,
-                       keyword TEXT NOT NULL,
-                       color TEXT NOT NULL,
-                       enabled INTEGER DEFAULT 1,
-                       UNIQUE(host, keyword))""")
-        db.execute("""CREATE TABLE IF NOT EXISTS profiles
-                      (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                       name TEXT NOT NULL,
-                       log_paths TEXT NOT NULL,
-                       color_rules TEXT NOT NULL,
-                       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                       UNIQUE(name))""")
-        # Закладки удалены
 
-def load_inventory():
-    """Простейший INI-парсер с кэшированием"""
-    global _inventory_cache
-    cache_key = INI_FILE
+def init_logtail_db():
+    """Create required tables if they do not exist."""
+    with get_logtail_db() as db:
+        db.execute(
+            """
+            CREATE TABLE IF NOT EXISTS host_logpaths(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                host TEXT NOT NULL,
+                path TEXT NOT NULL,
+                name TEXT NOT NULL DEFAULT '',
+                UNIQUE(host, path)
+            )
+            """
+        )
+        db.execute(
+            """
+            CREATE TABLE IF NOT EXISTS color_rules(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                host TEXT NOT NULL,
+                keyword TEXT NOT NULL,
+                color TEXT NOT NULL,
+                enabled INTEGER DEFAULT 1,
+                UNIQUE(host, keyword)
+            )
+            """
+        )
+        db.execute(
+            """
+            CREATE TABLE IF NOT EXISTS profiles(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                log_paths TEXT NOT NULL,
+                color_rules TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(name)
+            )
+            """
+        )
 
-    with _inventory_cache_lock:
-        mtime = None
-        if os.path.exists(INI_FILE):
-            mtime = os.path.getmtime(INI_FILE)
-
-        if cache_key in _inventory_cache:
-            cached_mtime, cached_hosts = _inventory_cache[cache_key]
-            if cached_mtime == mtime:
-                return cached_hosts
-
-        hosts = {}
-        if not os.path.isfile(INI_FILE):
-            _inventory_cache[cache_key] = (mtime, hosts)
-            return hosts
-        try:
-            with open(INI_FILE) as f:
-                for line in f:
-                    line = line.strip()
-                    if line and not line.startswith('#') and not line.startswith('['):
-                        parts = line.split()
-                        host = parts[0]
-                        vars = {}
-                        for item in parts[1:]:
-                            if '=' in item:
-                                k, v = item.split('=', 1)
-                                vars[k] = v
-                        hosts[host] = vars
-        except Exception as e:
-            print(f"Error loading inventory: {e}")
-            pass
-
-        _inventory_cache[cache_key] = (mtime, hosts)
-        return hosts
-
-# --------------------------------------------------
-# blueprint
-# --------------------------------------------------
-logtail_bp = Blueprint('logtail', __name__)
 
 @logtail_bp.before_app_first_request
-def _init_db():
-    init_db()
+def _init_db() -> None:
+    """Initialise DB once application starts."""
+    init_logtail_db()
 
-# --------------------------------------------------
-# routes
-# --------------------------------------------------
-@logtail_bp.route('/logtail.html')
-def dashboard():
-    return send_from_directory(STATIC_DIR, 'logtail.html')
 
-@logtail_bp.route('/api/hosts')
+def load_inventory():
+    """Read Ansible inventory file and return mapping of hosts."""
+    hosts = {}
+    if not os.path.isfile(INI_FILE):
+        return hosts
+    with open(INI_FILE) as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#") and not line.startswith("["):
+                parts = line.split()
+                host = parts[0]
+                vars = {}
+                for item in parts[1:]:
+                    if "=" in item:
+                        k, v = item.split("=", 1)
+                        vars[k] = v
+                hosts[host] = vars
+    return hosts
+
+
+# ---------------------------------------------------------------------------
+# Frontend route
+# ---------------------------------------------------------------------------
+@logtail_bp.route("/logtail")
+def logtail_dashboard():
+    """Serve logtail dashboard page."""
+    return render_template("logtail.html")
+
+
+# ---------------------------------------------------------------------------
+# API endpoints
+# ---------------------------------------------------------------------------
+@logtail_bp.route("/api/hosts")
 def api_hosts():
     return jsonify(load_inventory())
 
-# --- Новый эндпоинт для получения всей конфигурации хоста ---
-@logtail_bp.route('/api/host-config/<host>')
-def api_host_config(host):
-    """Получить всю конфигурацию для хоста за один запрос"""
-    db = get_db()
-    inventory = load_inventory()
-    if host not in inventory:
-        return 'unknown host', 404
 
-    path_rows = db.execute("SELECT id, path, name FROM host_logpaths WHERE host=?", (host,)).fetchall()
-    paths = [{'id': row['id'], 'path': row['path'], 'name': row['name']} for row in path_rows]
-
-    rule_rows = db.execute("SELECT id, keyword, color, enabled FROM color_rules WHERE host=?", (host,)).fetchall()
-    rules = [{'id': row['id'], 'keyword': row['keyword'], 'color': row['color'], 'enabled': row['enabled']} for row in rule_rows]
-
-    profile_rows = db.execute("SELECT id, name, created_at FROM profiles ORDER BY created_at DESC").fetchall()
-    profiles = [{'id': row['id'], 'name': row['name'], 'created_at': row['created_at']} for row in profile_rows]
-
-    return jsonify({
-        'paths': paths,
-        'rules': rules,
-        'profiles': profiles
-    })
-
-@logtail_bp.route('/api/logpaths/<host>', methods=['GET', 'POST', 'DELETE'])
+@logtail_bp.route("/api/logpaths/<host>", methods=["GET", "POST", "DELETE"])
 def api_logpaths(host):
-    db = get_db()
-    if request.method == 'POST':
+    db = get_logtail_db()
+    if request.method == "POST":
         data = request.json
-        path = data['path']
-        name = data.get('name', '')
-        db.execute("INSERT OR REPLACE INTO host_logpaths(host, path, name) VALUES (?, ?, ?)",
-                   (host, path, name))
+        path = data["path"]
+        name = data.get("name", "")
+        db.execute(
+            "INSERT OR REPLACE INTO host_logpaths(host, path, name) VALUES (?, ?, ?)",
+            (host, path, name),
+        )
         db.commit()
-        return jsonify({'status': 'ok'})
-    elif request.method == 'DELETE':
-        path_id = request.json.get('id')
-        db.execute("DELETE FROM host_logpaths WHERE id=? AND host=?", (path_id, host))
+        return jsonify({"status": "ok"})
+    elif request.method == "DELETE":
+        path_id = request.json.get("id")
+        db.execute(
+            "DELETE FROM host_logpaths WHERE id=? AND host=?",
+            (path_id, host),
+        )
         db.commit()
-        return jsonify({'status': 'ok'})
-    rows = db.execute("SELECT id, path, name FROM host_logpaths WHERE host=?", (host,)).fetchall()
-    paths = [{'id': row['id'], 'path': row['path'], 'name': row['name']} for row in rows]
-    return jsonify({'paths': paths})
+        return jsonify({"status": "ok"})
 
-@logtail_bp.route('/api/color-rules/<host>', methods=['GET', 'POST', 'DELETE'])
+    rows = db.execute(
+        "SELECT id, path, name FROM host_logpaths WHERE host=?", (host,)
+    ).fetchall()
+    paths = [
+        {"id": row["id"], "path": row["path"], "name": row["name"]}
+        for row in rows
+    ]
+    return jsonify({"paths": paths})
+
+
+@logtail_bp.route("/api/color-rules/<host>", methods=["GET", "POST", "DELETE"])
 def api_color_rules(host):
-    db = get_db()
-    if request.method == 'POST':
+    db = get_logtail_db()
+    if request.method == "POST":
         data = request.json
-        keyword = data['keyword']
-        color = data['color']
-        enabled = data.get('enabled', 1)
-        db.execute("INSERT OR REPLACE INTO color_rules(host, keyword, color, enabled) VALUES (?, ?, ?, ?)",
-                   (host, keyword, color, enabled))
+        keyword = data["keyword"]
+        color = data["color"]
+        enabled = data.get("enabled", 1)
+        db.execute(
+            """INSERT OR REPLACE INTO color_rules(host, keyword, color, enabled)
+                VALUES (?, ?, ?, ?)""",
+            (host, keyword, color, enabled),
+        )
         db.commit()
-        return jsonify({'status': 'ok'})
-    elif request.method == 'DELETE':
-        rule_id = request.json.get('id')
-        db.execute("DELETE FROM color_rules WHERE id=? AND host=?", (rule_id, host))
+        return jsonify({"status": "ok"})
+    elif request.method == "DELETE":
+        rule_id = request.json.get("id")
+        db.execute(
+            "DELETE FROM color_rules WHERE id=? AND host=?",
+            (rule_id, host),
+        )
         db.commit()
-        return jsonify({'status': 'ok'})
-    rows = db.execute("SELECT id, keyword, color, enabled FROM color_rules WHERE host=?", (host,)).fetchall()
-    rules = [{'id': row['id'], 'keyword': row['keyword'], 'color': row['color'], 'enabled': row['enabled']} for row in rows]
-    return jsonify({'rules': rules})
+        return jsonify({"status": "ok"})
 
-# --- API для профилей остается ---
-@logtail_bp.route('/api/profiles', methods=['GET', 'POST', 'DELETE', 'PUT'])
+    rows = db.execute(
+        "SELECT id, keyword, color, enabled FROM color_rules WHERE host=?",
+        (host,),
+    ).fetchall()
+    rules = [
+        {
+            "id": row["id"],
+            "keyword": row["keyword"],
+            "color": row["color"],
+            "enabled": row["enabled"],
+        }
+        for row in rows
+    ]
+    return jsonify({"rules": rules})
+
+
+@logtail_bp.route("/api/profiles", methods=["GET", "POST", "DELETE", "PUT"])
 def api_profiles():
-    db = get_db()
-    if request.method == 'POST':
+    db = get_logtail_db()
+    if request.method == "POST":
         data = request.json
-        name = data['name']
-        host = data['host']
-        path_rows = db.execute("SELECT id, path, name FROM host_logpaths WHERE host=?", (host,)).fetchall()
-        paths = [{'id': row['id'], 'path': row['path'], 'name': row['name']} for row in path_rows]
-        rule_rows = db.execute("SELECT id, keyword, color, enabled FROM color_rules WHERE host=?", (host,)).fetchall()
-        rules = [{'id': row['id'], 'keyword': row['keyword'], 'color': row['color'], 'enabled': row['enabled']} for row in rule_rows]
-        db.execute("INSERT INTO profiles(name, log_paths, color_rules) VALUES (?, ?, ?)",
-                   (name, json.dumps(paths), json.dumps(rules)))
+        name = data["name"]
+        host = data["host"]
+
+        path_rows = db.execute(
+            "SELECT id, path, name FROM host_logpaths WHERE host=?", (host,)
+        ).fetchall()
+        paths = [
+            {"id": row["id"], "path": row["path"], "name": row["name"]}
+            for row in path_rows
+        ]
+
+        rule_rows = db.execute(
+            "SELECT id, keyword, color, enabled FROM color_rules WHERE host=?",
+            (host,),
+        ).fetchall()
+        rules = [
+            {
+                "id": row["id"],
+                "keyword": row["keyword"],
+                "color": row["color"],
+                "enabled": row["enabled"],
+            }
+            for row in rule_rows
+        ]
+
+        db.execute(
+            "INSERT INTO profiles(name, log_paths, color_rules) VALUES (?, ?, ?)",
+            (name, json.dumps(paths), json.dumps(rules)),
+        )
         db.commit()
-        return jsonify({'status': 'ok'})
-    elif request.method == 'DELETE':
-        profile_id = request.json.get('id')
+        return jsonify({"status": "ok"})
+    elif request.method == "DELETE":
+        profile_id = request.json.get("id")
         db.execute("DELETE FROM profiles WHERE id=?", (profile_id,))
         db.commit()
-        return jsonify({'status': 'ok'})
-    elif request.method == 'PUT':
+        return jsonify({"status": "ok"})
+    elif request.method == "PUT":
         data = request.json
-        profile_id = data.get('id')
-        target_host = data.get('host')
-        profile_row = db.execute("SELECT log_paths, color_rules FROM profiles WHERE id=?",
-                                (profile_id,)).fetchone()
+        profile_id = data.get("id")
+        target_host = data.get("host")
+        profile_row = db.execute(
+            "SELECT log_paths, color_rules FROM profiles WHERE id=?",
+            (profile_id,),
+        ).fetchone()
         if not profile_row:
-            return 'Profile not found', 404
+            return "Profile not found", 404
         db.execute("DELETE FROM host_logpaths WHERE host=?", (target_host,))
         db.execute("DELETE FROM color_rules WHERE host=?", (target_host,))
-        paths = json.loads(profile_row['log_paths'])
-        for path_data in paths:
-            db.execute("INSERT INTO host_logpaths(host, path, name) VALUES (?, ?, ?)",
-                      (target_host, path_data['path'], path_data['name']))
-        rules = json.loads(profile_row['color_rules'])
-        for rule_data in rules:
-            db.execute("INSERT INTO color_rules(host, keyword, color, enabled) VALUES (?, ?, ?, ?)",
-                      (target_host, rule_data['keyword'], rule_data['color'], rule_data['enabled']))
+        paths = json.loads(profile_row["log_paths"])
+        for p in paths:
+            db.execute(
+                "INSERT INTO host_logpaths(host, path, name) VALUES (?, ?, ?)",
+                (target_host, p["path"], p["name"]),
+            )
+        rules = json.loads(profile_row["color_rules"])
+        for r in rules:
+            db.execute(
+                "INSERT INTO color_rules(host, keyword, color, enabled) VALUES (?, ?, ?, ?)",
+                (target_host, r["keyword"], r["color"], r["enabled"]),
+            )
         db.commit()
-        return jsonify({'status': 'ok'})
-    rows = db.execute("SELECT id, name, created_at FROM profiles ORDER BY created_at DESC").fetchall()
-    profiles = [{'id': row['id'], 'name': row['name'], 'created_at': row['created_at']} for row in rows]
-    return jsonify({'profiles': profiles})
+        return jsonify({"status": "ok"})
 
-@logtail_bp.route('/api/tail/<host>')
+    rows = db.execute(
+        "SELECT id, name, created_at FROM profiles ORDER BY created_at DESC"
+    ).fetchall()
+    profiles = [
+        {"id": row["id"], "name": row["name"], "created_at": row["created_at"]}
+        for row in rows
+    ]
+    return jsonify({"profiles": profiles})
+
+
+@logtail_bp.route("/api/tail/<host>")
 def api_tail(host):
-    # --- Изменено: получаем списки и флаг ignore_case ---
-    include_list  = request.args.getlist('include')
-    exclude_list  = request.args.getlist('exclude')
-    ignore_case   = request.args.get('ignore_case', 'false').lower() == 'true'
-    lines = int(request.args.get('lines', 100))
-    path_id = request.args.get('path_id')
-    follow = request.args.get('follow', 'true').lower() == 'true'
-    db = get_db()
+    grep = request.args.get("grep", "")
+    lines = int(request.args.get("lines", 100))
+    path_id = request.args.get("path_id")
+    follow = request.args.get("follow", "true").lower() == "true"
+    exclude = request.args.get("exclude", "")
+    level = request.args.get("level", "")
 
+    db = get_logtail_db()
     if path_id:
-        row = db.execute("SELECT path FROM host_logpaths WHERE id=? AND host=?", (path_id, host)).fetchone()
+        row = db.execute(
+            "SELECT path FROM host_logpaths WHERE id=? AND host=?",
+            (path_id, host),
+        ).fetchone()
     else:
-        row = db.execute("SELECT path FROM host_logpaths WHERE host=? LIMIT 1", (host,)).fetchone()
-    if not row or not row['path']:
-        return 'log path not set', 400
-    logpath = row['path']
+        row = db.execute(
+            "SELECT path FROM host_logpaths WHERE host=? LIMIT 1", (host,)
+        ).fetchone()
+
+    if not row or not row["path"]:
+        return "log path not set", 400
+    logpath = row["path"]
+
     inventory = load_inventory()
     if host not in inventory:
-        return 'unknown host', 404
+        return "unknown host", 404
     vars = inventory[host]
-    ssh_target = vars.get('ansible_host', host)
-    ssh_user   = vars.get('ansible_user', 'root')
-    ssh_pass   = vars.get('ansible_ssh_pass', '')
+    ssh_target = vars.get("ansible_host", host)
+    ssh_user = vars.get("ansible_user", "root")
+    ssh_pass = vars.get("ansible_ssh_pass", "")
+
     if follow:
         cmd = f"tail -n {lines} -F {shlex.quote(logpath)}"
     else:
         cmd = f"tail -n {lines} {shlex.quote(logpath)}"
+    if grep:
+        cmd += f" | grep --line-buffered -E {shlex.quote(grep)}"
+    if exclude:
+        cmd += f" | grep --line-buffered -v -E {shlex.quote(exclude)}"
+    if level:
+        level_patterns = {
+            "ERROR": "(ERROR|ERR|FATAL)",
+            "WARN": "(WARN|WARNING)",
+            "INFO": "INFO",
+            "DEBUG": "DEBUG",
+        }
+        if level in level_patterns:
+            cmd += f" | grep --line-buffered -E {shlex.quote(level_patterns[level])}"
 
-    # --- Изменено: Обработка Include и Exclude с учетом регистра ---
-    grep_options = "--line-buffered"
-    if ignore_case:
-        grep_options += " -i"
-
-    if include_list:
-        filtered_includes = [p for p in include_list if p.strip()]
-        if filtered_includes:
-            escaped_includes = [re.escape(p) for p in filtered_includes]
-            include_regex = '|'.join(escaped_includes)
-            cmd += f" | grep {grep_options} -E {shlex.quote(include_regex)}"
-
-    if exclude_list:
-        filtered_excludes = [p for p in exclude_list if p.strip()]
-        if filtered_excludes:
-            escaped_excludes = [re.escape(p) for p in filtered_excludes]
-            exclude_regex = '|'.join(escaped_excludes)
-            cmd += f" | grep {grep_options} -v -E {shlex.quote(exclude_regex)}"
-    # --- /Изменено ---
-
-    color_rows = db.execute("SELECT keyword, color FROM color_rules WHERE host=? AND enabled=1", (host,)).fetchall()
-    color_rules = [(row['keyword'], row['color']) for row in color_rows]
-
-    def yield_buffer(generator, buffer_time=0.1):
-        buffer = []
-        last_yield_time = time.time()
-        try:
-            for item in generator:
-                buffer.append(item)
-                current_time = time.time()
-                if buffer and (current_time - last_yield_time >= buffer_time):
-                    yield ''.join(buffer)
-                    buffer = []
-                    last_yield_time = current_time
-            if buffer:
-                yield ''.join(buffer)
-        except GeneratorExit:
-            pass
-        except Exception as e:
-            yield f"\nERROR in yield_buffer: {e}\n"
+    color_rows = db.execute(
+        "SELECT keyword, color FROM color_rules WHERE host=? AND enabled=1",
+        (host,),
+    ).fetchall()
+    color_rules = [(row["keyword"], row["color"]) for row in color_rows]
 
     def generate():
         sshpass_cmd = [
-            'sshpass', '-p', ssh_pass,
-            'ssh',
-            '-o', 'StrictHostKeyChecking=no',
-            '-o', 'UserKnownHostsFile=/dev/null',
-            '-o', 'LogLevel=ERROR',
+            "sshpass",
+            "-p",
+            ssh_pass,
+            "ssh",
+            "-o",
+            "StrictHostKeyChecking=accept-new",
+            "-o",
+            "UserKnownHostsFile=/dev/null",
+            "-o",
+            "LogLevel=ERROR",
             f"{ssh_user}@{ssh_target}",
-            cmd
+            cmd,
         ]
         proc = subprocess.Popen(
-            sshpass_cmd,
-            stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
+            sshpass_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
+        )
         try:
-            line_generator = iter(proc.stdout.readline, '')
-            for chunk in yield_buffer((apply_color_rules_html(line, color_rules, follow) for line in line_generator)):
-                yield chunk
-        except Exception as e:
-            yield f"\nERROR in generate: {e}\n"
+            for line in iter(proc.stdout.readline, ""):
+                if follow:
+                    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    line = f"[{timestamp}] {line}"
+                colored_line = apply_color_rules_html(line, color_rules)
+                yield colored_line
         finally:
-            try:
-                proc.terminate()
-            except subprocess.TimeoutExpired:
-                proc.kill()
-            except:
-                pass
+            proc.terminate()
 
-    return current_app.response_class(generate(), mimetype='text/html')
+    return current_app.response_class(generate(), mimetype="text/html")
 
-def apply_color_rules_html(line, color_rules, add_timestamp=False):
-    """Применить правила раскраски к строке и конвертировать в HTML"""
-    if add_timestamp:
-        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        line = f"[{timestamp}] {line}"
 
+def apply_color_rules_html(line, color_rules):
     if not color_rules:
-        return html.escape(line) + '\n'
-
+        return line
     result = html.escape(line)
     for keyword, color in color_rules:
         if keyword in result:
@@ -338,15 +373,189 @@ def apply_color_rules_html(line, color_rules, add_timestamp=False):
             color_class = get_css_color_class(color)
             colored_keyword = f'<span class="{color_class}">{keyword}</span>'
             result = re.sub(escaped_keyword, colored_keyword, result)
-    return result + '\n'
+    return result + "\n"
+
 
 def get_css_color_class(color_name):
     return f"log-color-{color_name}"
 
-# --------------------------------------------------
-if __name__ == '__main__':
-    init_db()
-    app = Flask(__name__)
-    app.register_blueprint(logtail_bp)
-    app.run(host='0.0.0.0', port=5004, threaded=True)
 
+# ---------------------------------------------------------------------------
+# Journal API
+# ---------------------------------------------------------------------------
+@logtail_bp.route("/api/journal-services/<host>")
+def api_journal_services(host):
+    inventory = load_inventory()
+    if host not in inventory:
+        return "unknown host", 404
+    vars = inventory[host]
+    ssh_target = vars.get("ansible_host", host)
+    ssh_user = vars.get("ansible_user", "root")
+    ssh_pass = vars.get("ansible_ssh_pass", "")
+    cmd = "systemctl list-units --type=service --no-pager --no-legend | head -50"
+    sshpass_cmd = [
+        "sshpass",
+        "-p",
+        ssh_pass,
+        "ssh",
+        "-o",
+        "StrictHostKeyChecking=accept-new",
+        "-o",
+        "UserKnownHostsFile=/dev/null",
+        "-o",
+        "LogLevel=ERROR",
+        f"{ssh_user}@{ssh_target}",
+        cmd,
+    ]
+    try:
+        result = subprocess.run(sshpass_cmd, capture_output=True, text=True, timeout=10)
+        if result.returncode == 0:
+            services = []
+            for line in result.stdout.strip().split("\n"):
+                if line:
+                    parts = line.split(None, 4)
+                    if len(parts) >= 5:
+                        service_name = parts[0]
+                        description = parts[4]
+                        services.append({"name": service_name, "description": description})
+            return jsonify({"services": services})
+        return "Failed to get services", 500
+    except subprocess.TimeoutExpired:
+        return "Timeout getting services", 500
+    except Exception as e:  # pragma: no cover
+        return f"Error: {e}", 500
+
+
+@logtail_bp.route("/api/journal/<host>")
+def api_journal(host):
+    service = request.args.get("service")
+    lines = int(request.args.get("lines", 100))
+    grep = request.args.get("grep", "")
+    follow = request.args.get("follow", "true").lower() == "true"
+    include_filters = request.args.get("include", "")
+    exclude_filters = request.args.get("exclude", "")
+    if not service:
+        return "service parameter required", 400
+    inventory = load_inventory()
+    if host not in inventory:
+        return "unknown host", 404
+    vars = inventory[host]
+    ssh_target = vars.get("ansible_host", host)
+    ssh_user = vars.get("ansible_user", "root")
+    ssh_pass = vars.get("ansible_ssh_pass", "")
+    cmd = f"journalctl -u {shlex.quote(service)} -n {lines} --no-pager"
+    if follow:
+        cmd += " -f"
+    if grep:
+        cmd += f" | grep --line-buffered -E {shlex.quote(grep)}"
+    if include_filters:
+        for inc in include_filters.split(","):
+            if inc.strip():
+                cmd += f" | grep --line-buffered -E {shlex.quote(inc.strip())}"
+    if exclude_filters:
+        for exc in exclude_filters.split(","):
+            if exc.strip():
+                cmd += f" | grep --line-buffered -v -E {shlex.quote(exc.strip())}"
+
+    def generate():
+        sshpass_cmd = [
+            "sshpass",
+            "-p",
+            ssh_pass,
+            "ssh",
+            "-o",
+            "StrictHostKeyChecking=accept-new",
+            "-o",
+            "UserKnownHostsFile=/dev/null",
+            "-o",
+            "LogLevel=ERROR",
+            f"{ssh_user}@{ssh_target}",
+            cmd,
+        ]
+        proc = subprocess.Popen(
+            sshpass_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
+        )
+        try:
+            for line in iter(proc.stdout.readline, ""):
+                yield line
+        finally:
+            proc.terminate()
+
+    return current_app.response_class(generate(), mimetype="text/plain")
+
+
+@logtail_bp.route("/api/journal-status/<host>")
+def api_journal_status_get(host):
+    service = request.args.get("service")
+    if not service:
+        return jsonify({"status": "error", "error": "service parameter required"}), 400
+    inventory = load_inventory()
+    if host not in inventory:
+        return jsonify({"status": "error", "error": "unknown host"}), 404
+    vars = inventory[host]
+    ssh_target = vars.get("ansible_host", host)
+    ssh_user = vars.get("ansible_user", "root")
+    ssh_pass = vars.get("ansible_ssh_pass", "")
+    cmd = f"systemctl is-active {shlex.quote(service)}.service"
+    sshpass_cmd = [
+        "sshpass",
+        "-p",
+        ssh_pass,
+        "ssh",
+        "-o",
+        "StrictHostKeyChecking=accept-new",
+        "-o",
+        "UserKnownHostsFile=/dev/null",
+        "-o",
+        "LogLevel=ERROR",
+        f"{ssh_user}@{ssh_target}",
+        cmd,
+    ]
+    try:
+        result = subprocess.run(sshpass_cmd, capture_output=True, text=True, timeout=10)
+        status = result.stdout.strip() if result.returncode == 0 else "unknown"
+        return jsonify({"active": status})
+    except Exception as e:  # pragma: no cover
+        return jsonify({"status": "error", "error": str(e)})
+
+
+@logtail_bp.route("/api/journal-control/<host>", methods=["POST"])
+def api_journal_control(host):
+    data = request.json
+    service = data.get("service")
+    action = data.get("action")
+    if not service or not action:
+        return jsonify({"status": "error", "error": "service and action required"}), 400
+    if action not in ["start", "stop", "restart"]:
+        return jsonify({"status": "error", "error": "invalid action"}), 400
+    inventory = load_inventory()
+    if host not in inventory:
+        return jsonify({"status": "error", "error": "unknown host"}), 404
+    vars = inventory[host]
+    ssh_target = vars.get("ansible_host", host)
+    ssh_user = vars.get("ansible_user", "root")
+    ssh_pass = vars.get("ansible_ssh_pass", "")
+    cmd = f"sudo systemctl {action} {shlex.quote(service)}.service"
+    sshpass_cmd = [
+        "sshpass",
+        "-p",
+        ssh_pass,
+        "ssh",
+        "-o",
+        "StrictHostKeyChecking=accept-new",
+        "-o",
+        "UserKnownHostsFile=/dev/null",
+        "-o",
+        "LogLevel=ERROR",
+        f"{ssh_user}@{ssh_target}",
+        cmd,
+    ]
+    try:
+        result = subprocess.run(sshpass_cmd, capture_output=True, text=True, timeout=30)
+        if result.returncode == 0:
+            return jsonify({"status": "success"})
+        return jsonify({"status": "error", "error": result.stderr.strip()}), 500
+    except subprocess.TimeoutExpired:
+        return jsonify({"status": "error", "error": "timeout"}), 500
+    except Exception as e:  # pragma: no cover
+        return jsonify({"status": "error", "error": str(e)}), 500
