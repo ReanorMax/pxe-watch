@@ -30,6 +30,11 @@ from config import ANSIBLE_INVENTORY
 INI_FILE = ANSIBLE_INVENTORY
 DB_FILE = "logtail.sqlite"
 
+# Defaults can be overridden via environment variables
+DEFAULT_SSH_USER = os.getenv("LOGTAIL_DEFAULT_SSH_USER", "root")
+DEFAULT_SSH_PASS = os.getenv("LOGTAIL_DEFAULT_SSH_PASS", "")
+DEFAULT_SSH_PORT = os.getenv("LOGTAIL_DEFAULT_SSH_PORT", "22")
+
 logtail_bp = Blueprint("logtail", __name__)
 
 
@@ -107,6 +112,46 @@ def load_inventory():
                         vars[k] = v
                 hosts[host] = vars
     return hosts
+
+
+def build_ssh_command(host: str, vars: dict, cmd: str):
+    """Prepare command for remote or local execution.
+
+    Returns a tuple ``(is_local, command)`` where ``command`` is either a list
+    suitable for ``subprocess`` or a shell string when executing locally.
+    ``is_local`` indicates whether the command should be executed without SSH.
+    """
+    if vars.get("ansible_connection") == "local":
+        return True, cmd
+
+    ssh_target = vars.get("ansible_host", host)
+    ssh_user = vars.get("ansible_user", DEFAULT_SSH_USER)
+    ssh_pass = (
+        vars.get("ansible_ssh_pass")
+        or vars.get("ansible_password")
+        or DEFAULT_SSH_PASS
+    )
+    ssh_port = (
+        vars.get("ansible_port")
+        or vars.get("ansible_ssh_port")
+        or DEFAULT_SSH_PORT
+    )
+
+    ssh_cmd: list[str] = [
+        "ssh",
+        "-o",
+        "StrictHostKeyChecking=accept-new",
+        "-o",
+        "UserKnownHostsFile=/dev/null",
+        "-o",
+        "LogLevel=ERROR",
+    ]
+    if ssh_port:
+        ssh_cmd.extend(["-p", str(ssh_port)])
+    ssh_cmd.extend([f"{ssh_user}@{ssh_target}", cmd])
+    if ssh_pass:
+        ssh_cmd = ["sshpass", "-p", ssh_pass, *ssh_cmd]
+    return False, ssh_cmd
 
 
 # ---------------------------------------------------------------------------
@@ -304,9 +349,6 @@ def api_tail(host):
     if host not in inventory:
         return "unknown host", 404
     vars = inventory[host]
-    ssh_target = vars.get("ansible_host", host)
-    ssh_user = vars.get("ansible_user", "root")
-    ssh_pass = vars.get("ansible_ssh_pass", "")
 
     if follow:
         cmd = f"tail -n {lines} -F {shlex.quote(logpath)}"
@@ -332,23 +374,15 @@ def api_tail(host):
     ).fetchall()
     color_rules = [(row["keyword"], row["color"]) for row in color_rows]
 
+    is_local, exec_cmd = build_ssh_command(host, vars, cmd)
+
     def generate():
-        sshpass_cmd = [
-            "sshpass",
-            "-p",
-            ssh_pass,
-            "ssh",
-            "-o",
-            "StrictHostKeyChecking=accept-new",
-            "-o",
-            "UserKnownHostsFile=/dev/null",
-            "-o",
-            "LogLevel=ERROR",
-            f"{ssh_user}@{ssh_target}",
-            cmd,
-        ]
         proc = subprocess.Popen(
-            sshpass_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
+            exec_cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            shell=is_local,
         )
         try:
             for line in iter(proc.stdout.readline, ""):
@@ -389,26 +423,12 @@ def api_journal_services(host):
     if host not in inventory:
         return "unknown host", 404
     vars = inventory[host]
-    ssh_target = vars.get("ansible_host", host)
-    ssh_user = vars.get("ansible_user", "root")
-    ssh_pass = vars.get("ansible_ssh_pass", "")
     cmd = "systemctl list-units --type=service --no-pager --no-legend | head -50"
-    sshpass_cmd = [
-        "sshpass",
-        "-p",
-        ssh_pass,
-        "ssh",
-        "-o",
-        "StrictHostKeyChecking=accept-new",
-        "-o",
-        "UserKnownHostsFile=/dev/null",
-        "-o",
-        "LogLevel=ERROR",
-        f"{ssh_user}@{ssh_target}",
-        cmd,
-    ]
+    is_local, exec_cmd = build_ssh_command(host, vars, cmd)
     try:
-        result = subprocess.run(sshpass_cmd, capture_output=True, text=True, timeout=10)
+        result = subprocess.run(
+            exec_cmd, capture_output=True, text=True, timeout=10, shell=is_local
+        )
         if result.returncode == 0:
             services = []
             for line in result.stdout.strip().split("\n"):
@@ -440,9 +460,6 @@ def api_journal(host):
     if host not in inventory:
         return "unknown host", 404
     vars = inventory[host]
-    ssh_target = vars.get("ansible_host", host)
-    ssh_user = vars.get("ansible_user", "root")
-    ssh_pass = vars.get("ansible_ssh_pass", "")
     cmd = f"journalctl -u {shlex.quote(service)} -n {lines} --no-pager"
     if follow:
         cmd += " -f"
@@ -457,23 +474,15 @@ def api_journal(host):
             if exc.strip():
                 cmd += f" | grep --line-buffered -v -E {shlex.quote(exc.strip())}"
 
+    is_local, exec_cmd = build_ssh_command(host, vars, cmd)
+
     def generate():
-        sshpass_cmd = [
-            "sshpass",
-            "-p",
-            ssh_pass,
-            "ssh",
-            "-o",
-            "StrictHostKeyChecking=accept-new",
-            "-o",
-            "UserKnownHostsFile=/dev/null",
-            "-o",
-            "LogLevel=ERROR",
-            f"{ssh_user}@{ssh_target}",
-            cmd,
-        ]
         proc = subprocess.Popen(
-            sshpass_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
+            exec_cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            shell=is_local,
         )
         try:
             for line in iter(proc.stdout.readline, ""):
@@ -493,26 +502,12 @@ def api_journal_status_get(host):
     if host not in inventory:
         return jsonify({"status": "error", "error": "unknown host"}), 404
     vars = inventory[host]
-    ssh_target = vars.get("ansible_host", host)
-    ssh_user = vars.get("ansible_user", "root")
-    ssh_pass = vars.get("ansible_ssh_pass", "")
     cmd = f"systemctl is-active {shlex.quote(service)}.service"
-    sshpass_cmd = [
-        "sshpass",
-        "-p",
-        ssh_pass,
-        "ssh",
-        "-o",
-        "StrictHostKeyChecking=accept-new",
-        "-o",
-        "UserKnownHostsFile=/dev/null",
-        "-o",
-        "LogLevel=ERROR",
-        f"{ssh_user}@{ssh_target}",
-        cmd,
-    ]
+    is_local, exec_cmd = build_ssh_command(host, vars, cmd)
     try:
-        result = subprocess.run(sshpass_cmd, capture_output=True, text=True, timeout=10)
+        result = subprocess.run(
+            exec_cmd, capture_output=True, text=True, timeout=10, shell=is_local
+        )
         status = result.stdout.strip() if result.returncode == 0 else "unknown"
         return jsonify({"active": status})
     except Exception as e:  # pragma: no cover
@@ -532,26 +527,12 @@ def api_journal_control(host):
     if host not in inventory:
         return jsonify({"status": "error", "error": "unknown host"}), 404
     vars = inventory[host]
-    ssh_target = vars.get("ansible_host", host)
-    ssh_user = vars.get("ansible_user", "root")
-    ssh_pass = vars.get("ansible_ssh_pass", "")
     cmd = f"sudo systemctl {action} {shlex.quote(service)}.service"
-    sshpass_cmd = [
-        "sshpass",
-        "-p",
-        ssh_pass,
-        "ssh",
-        "-o",
-        "StrictHostKeyChecking=accept-new",
-        "-o",
-        "UserKnownHostsFile=/dev/null",
-        "-o",
-        "LogLevel=ERROR",
-        f"{ssh_user}@{ssh_target}",
-        cmd,
-    ]
+    is_local, exec_cmd = build_ssh_command(host, vars, cmd)
     try:
-        result = subprocess.run(sshpass_cmd, capture_output=True, text=True, timeout=30)
+        result = subprocess.run(
+            exec_cmd, capture_output=True, text=True, timeout=30, shell=is_local
+        )
         if result.returncode == 0:
             return jsonify({"status": "success"})
         return jsonify({"status": "error", "error": result.stderr.strip()}), 500
