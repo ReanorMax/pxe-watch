@@ -655,12 +655,12 @@ async function loadHosts() {
     const div = document.createElement('div');
     div.className = 'host-item';
     div.innerHTML = `<div class="d-flex justify-content-between align-items-center"><span><i class="fas fa-desktop me-2"></i>${h}</span><span class="badge bg-success">online</span></div>`;
-    div.onclick = () => pickHost(h);
+    div.onclick = (e) => pickHost(e, h);
     container.appendChild(div);
   });
 }
 
-async function pickHost(host) {
+async function pickHost(event, host) {
   selectedHost = host;
   selectedPathId = null;
   selectedPathName = '';
@@ -689,14 +689,14 @@ async function loadSavedPaths() {
     div.innerHTML = `<div class="d-flex justify-content-between align-items-center"><div><div><i class="fas fa-file me-1"></i>${nameDisplay}</div><small class="text-muted">${path.path}</small></div><button class="btn btn-sm btn-danger" onclick="deletePath(event, ${path.id})"><i class="fas fa-times"></i></button></div>`;
     div.onclick = (e) => {
       if (e.target.tagName !== 'BUTTON' && e.target.parentElement.tagName !== 'BUTTON') {
-        selectPath(path.id, path.name || path.path);
+        selectPath(e, path.id, path.name || path.path);
       }
     };
     container.appendChild(div);
   });
 }
 
-function selectPath(pathId, pathName) {
+function selectPath(event, pathId, pathName) {
   selectedPathId = pathId;
   selectedPathName = pathName;
   document.getElementById('currentPathName').textContent = pathName;
