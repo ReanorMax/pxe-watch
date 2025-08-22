@@ -89,24 +89,6 @@ def _init_db() -> None:
     init_logtail_db()
 
 
-def build_ssh_command(ssh_user, ssh_target, ssh_pass, cmd):
-    """Construct SSH command with optional sshpass."""
-    base_cmd = [
-        "ssh",
-        "-o",
-        "StrictHostKeyChecking=accept-new",
-        "-o",
-        "UserKnownHostsFile=/dev/null",
-        "-o",
-        "LogLevel=ERROR",
-        f"{ssh_user}@{ssh_target}",
-        cmd,
-    ]
-    if ssh_pass:
-        return ["sshpass", "-p", ssh_pass] + base_cmd
-    return base_cmd
-
-
 def load_inventory():
     """Read Ansible inventory file and return mapping of hosts."""
     hosts = {}
@@ -351,9 +333,22 @@ def api_tail(host):
     color_rules = [(row["keyword"], row["color"]) for row in color_rows]
 
     def generate():
-        ssh_cmd = build_ssh_command(ssh_user, ssh_target, ssh_pass, cmd)
+        sshpass_cmd = [
+            "sshpass",
+            "-p",
+            ssh_pass,
+            "ssh",
+            "-o",
+            "StrictHostKeyChecking=accept-new",
+            "-o",
+            "UserKnownHostsFile=/dev/null",
+            "-o",
+            "LogLevel=ERROR",
+            f"{ssh_user}@{ssh_target}",
+            cmd,
+        ]
         proc = subprocess.Popen(
-            ssh_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
+            sshpass_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
         )
         try:
             for line in iter(proc.stdout.readline, ""):
@@ -398,9 +393,22 @@ def api_journal_services(host):
     ssh_user = vars.get("ansible_user", "root")
     ssh_pass = vars.get("ansible_ssh_pass", "")
     cmd = "systemctl list-units --type=service --no-pager --no-legend | head -50"
-    ssh_cmd = build_ssh_command(ssh_user, ssh_target, ssh_pass, cmd)
+    sshpass_cmd = [
+        "sshpass",
+        "-p",
+        ssh_pass,
+        "ssh",
+        "-o",
+        "StrictHostKeyChecking=accept-new",
+        "-o",
+        "UserKnownHostsFile=/dev/null",
+        "-o",
+        "LogLevel=ERROR",
+        f"{ssh_user}@{ssh_target}",
+        cmd,
+    ]
     try:
-        result = subprocess.run(ssh_cmd, capture_output=True, text=True, timeout=10)
+        result = subprocess.run(sshpass_cmd, capture_output=True, text=True, timeout=10)
         if result.returncode == 0:
             services = []
             for line in result.stdout.strip().split("\n"):
@@ -450,9 +458,22 @@ def api_journal(host):
                 cmd += f" | grep --line-buffered -v -E {shlex.quote(exc.strip())}"
 
     def generate():
-        ssh_cmd = build_ssh_command(ssh_user, ssh_target, ssh_pass, cmd)
+        sshpass_cmd = [
+            "sshpass",
+            "-p",
+            ssh_pass,
+            "ssh",
+            "-o",
+            "StrictHostKeyChecking=accept-new",
+            "-o",
+            "UserKnownHostsFile=/dev/null",
+            "-o",
+            "LogLevel=ERROR",
+            f"{ssh_user}@{ssh_target}",
+            cmd,
+        ]
         proc = subprocess.Popen(
-            ssh_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
+            sshpass_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
         )
         try:
             for line in iter(proc.stdout.readline, ""):
@@ -476,9 +497,22 @@ def api_journal_status_get(host):
     ssh_user = vars.get("ansible_user", "root")
     ssh_pass = vars.get("ansible_ssh_pass", "")
     cmd = f"systemctl is-active {shlex.quote(service)}.service"
-    ssh_cmd = build_ssh_command(ssh_user, ssh_target, ssh_pass, cmd)
+    sshpass_cmd = [
+        "sshpass",
+        "-p",
+        ssh_pass,
+        "ssh",
+        "-o",
+        "StrictHostKeyChecking=accept-new",
+        "-o",
+        "UserKnownHostsFile=/dev/null",
+        "-o",
+        "LogLevel=ERROR",
+        f"{ssh_user}@{ssh_target}",
+        cmd,
+    ]
     try:
-        result = subprocess.run(ssh_cmd, capture_output=True, text=True, timeout=10)
+        result = subprocess.run(sshpass_cmd, capture_output=True, text=True, timeout=10)
         status = result.stdout.strip() if result.returncode == 0 else "unknown"
         return jsonify({"active": status})
     except Exception as e:  # pragma: no cover
@@ -502,9 +536,22 @@ def api_journal_control(host):
     ssh_user = vars.get("ansible_user", "root")
     ssh_pass = vars.get("ansible_ssh_pass", "")
     cmd = f"sudo systemctl {action} {shlex.quote(service)}.service"
-    ssh_cmd = build_ssh_command(ssh_user, ssh_target, ssh_pass, cmd)
+    sshpass_cmd = [
+        "sshpass",
+        "-p",
+        ssh_pass,
+        "ssh",
+        "-o",
+        "StrictHostKeyChecking=accept-new",
+        "-o",
+        "UserKnownHostsFile=/dev/null",
+        "-o",
+        "LogLevel=ERROR",
+        f"{ssh_user}@{ssh_target}",
+        cmd,
+    ]
     try:
-        result = subprocess.run(ssh_cmd, capture_output=True, text=True, timeout=30)
+        result = subprocess.run(sshpass_cmd, capture_output=True, text=True, timeout=30)
         if result.returncode == 0:
             return jsonify({"status": "success"})
         return jsonify({"status": "error", "error": result.stderr.strip()}), 500
