@@ -642,7 +642,7 @@ function switchTab(tabName) {
   } else {
     document.getElementById('journalTab').classList.add('active');
     document.querySelector('.tab-button:nth-child(2)').classList.add('active');
-    if (currentStream) { currentStream.cancel(); currentStream = null; }
+    if (currentStream) { currentStream.abort(); currentStream = null; }
     if (selectedHost) { refreshServiceList(); }
   }
 }
@@ -777,7 +777,7 @@ async function loadColorRules() {
 
 function tail() {
   if (!selectedHost) return;
-  if (currentStream) currentStream.cancel();
+  if (currentStream) currentStream.abort();
   const grep = document.getElementById('grep').value;
   const exclude = document.getElementById('excludePattern').value;
   const level = document.getElementById('logLevel').value;
