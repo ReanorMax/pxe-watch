@@ -852,7 +852,8 @@ function highlightLogLine(content) {
 function tail() {
   if (!selectedHost) return;
   if (currentStream) {
-    currentStream.cancel();
+    // Abort the previous streaming request if one exists
+    currentStream.abort();
   }
   const lines = document.getElementById('linesCount').value;
   // const ignoreCase = document.getElementById('ignoreCaseSwitch').checked;
