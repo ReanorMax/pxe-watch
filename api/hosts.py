@@ -7,13 +7,52 @@ import re
 from config import (
     SSH_PASSWORD,
     SSH_USER,
-    SSH_OPTIONS,
     ANSIBLE_PLAYBOOK,
     ANSIBLE_INVENTORY,
 )
 from . import api_bp
 from services.registration import register_host
 from services import set_playbook_status
+
+
+def get_ssh_credentials(ip: str) -> tuple[str, str]:
+    """Return SSH user and password for *ip* from Ansible inventory.
+
+    Falls back to ``SSH_USER`` and ``SSH_PASSWORD`` if the inventory does not
+    contain specific credentials for the host. Inventory lines are expected to
+    be in the form ``host var1=value1 var2=value2``.
+    """
+    user = SSH_USER
+    password = SSH_PASSWORD
+    try:
+        with open(ANSIBLE_INVENTORY) as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith('#') or line.startswith('['):
+                    continue
+                parts = line.split()
+                host = parts[0]
+                if host == ip:
+                    vars_dict = {
+                        k: v
+                        for k, v in (
+                            p.split('=', 1) for p in parts[1:] if '=' in p
+                        )
+                    }
+                    user = vars_dict.get('ansible_user', user)
+                    password = (
+                        vars_dict.get('ansible_password')
+                        or vars_dict.get('ansible_ssh_pass')
+                        or password
+                    )
+                    break
+    except FileNotFoundError:
+        logging.warning(
+            f'Inventory file {ANSIBLE_INVENTORY} not found when looking up {ip}'
+        )
+    except Exception as e:
+        logging.error(f'Error reading inventory {ANSIBLE_INVENTORY}: {e}')
+    return user, password
 
 
 def parse_playbook_summary(output: str) -> dict[str, str]:
@@ -119,10 +158,20 @@ def api_host_reboot():
     if not ip or ip == '—':
         return jsonify({'status': 'error', 'msg': 'Неверный IP-адрес'}), 400
     try:
-        cmd = f"sshpass -p '{SSH_PASSWORD}' ssh {SSH_OPTIONS} {SSH_USER}@{ip} 'reboot'"
-        subprocess.run(cmd, shell=True, check=True, timeout=10, capture_output=True, text=True)
+        user, password = get_ssh_credentials(ip)
+        cmd = (
+            f"sshpass -p '{password}' ssh -o StrictHostKeyChecking=no "
+            f"-o UserKnownHostsFile=/dev/null {user}@{ip} "
+            "\"nohup sh -c 'sleep 2 && reboot' >/dev/null 2>&1 &\""
+        )
+        subprocess.run(
+            cmd, shell=True, check=True, timeout=10, capture_output=True, text=True
+        )
         logging.info(f'Команда перезагрузки отправлена на {ip}')
-        return jsonify({'status': 'ok', 'msg': f'Команда перезагрузки отправлена на {ip}'}), 200
+        return (
+            jsonify({'status': 'ok', 'msg': f'Команда перезагрузки отправлена на {ip}'}),
+            200,
+        )
     except subprocess.TimeoutExpired as e:
         msg = f'Команда перезагрузки отправлена на {ip} (таймаут ожидания ответа)'
         logging.warning(msg + f" | Stderr: {e.stderr if e.stderr else 'N/A'}")
@@ -171,8 +220,15 @@ def api_host_shutdown():
     if not ip or ip == '—':
         return jsonify({'status': 'error', 'msg': 'Неверный IP-адрес'}), 400
     try:
-        cmd = f"sshpass -p '{SSH_PASSWORD}' ssh {SSH_OPTIONS} {SSH_USER}@{ip} 'shutdown -h now'"
-        result = subprocess.run(cmd, shell=True, check=True, timeout=10, capture_output=True, text=True)
+        user, password = get_ssh_credentials(ip)
+        cmd = (
+            f"sshpass -p '{password}' ssh -o StrictHostKeyChecking=no "
+            f"-o UserKnownHostsFile=/dev/null {user}@{ip} "
+            "\"shutdown -r +1\""
+        )
+        result = subprocess.run(
+            cmd, shell=True, check=True, timeout=10, capture_output=True, text=True
+        )
         logging.info(f'Команда выключения отправлена на {ip}')
         msg = f'Команда выключения отправлена на {ip}'
         if result.stderr:
