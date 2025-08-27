@@ -224,7 +224,7 @@ def api_host_shutdown():
         cmd = (
             f"sshpass -p '{password}' ssh -o StrictHostKeyChecking=no "
             f"-o UserKnownHostsFile=/dev/null {user}@{ip} "
-            "\"nohup sh -c 'sleep 2 && poweroff' >/dev/null 2>&1 &\""
+            "\"shutdown -r +1\""
         )
         result = subprocess.run(
             cmd, shell=True, check=True, timeout=10, capture_output=True, text=True
