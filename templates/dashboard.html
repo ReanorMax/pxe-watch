@@ -11,9 +11,8 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/dracula.min.css" />
   <!-- Шрифт Fira Code -->
   <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/animations.css') }}">
   
 </head>
 <body>
@@ -72,42 +71,25 @@
       </thead>
       <tbody id="hosts-table-body">
         {% for h in hosts %}
-        <tr data-ip="{{ h.ip }}" data-mac="{{ h.mac }}" data-status="{{ h.status if h.status else 'online' }}">
-          <td>
-            <div class="host-info">
-              <span class="mac-address">{{ h.mac }}</span>
-              <span class="status-badge status-{{ h.status if h.status else 'online' }}">{{ h.status if h.status else 'Online' }}</span>
-            </div>
-          </td>
-          <td>
-            <div class="ip-address">
-              <i class="fas fa-network-wired"></i>
-              <span>{{ h.ip }}</span>
-            </div>
-          </td>
-          <td>
-            <div class="timestamp">
-              <i class="far fa-clock"></i>
-              <time datetime="{{ h.last }}">{{ h.last }}</time>
-            </div>
-          </td>
+        <tr data-ip="{{ h.ip }}" data-mac="{{ h.mac }}">
+          <td>{{ h.mac }}</td>
+          <td>{{ h.ip }}</td>
+          <td><time datetime="{{ h.last }}">{{ h.last }}</time></td>
           <td>
             <a class="btn-portainer portainer-link" href="http://{{ h.ip }}:9000" target="_blank" rel="noopener noreferrer" title="Portainer" style="display: {% if h.ip and h.ip != '—' %}inline-flex{% else %}none{% endif %};">
               <i class="fab fa-docker"></i> Portainer
             </a>
           </td>
           <td class="actions-cell">
-            <div class="action-buttons">
-              <button class="btn-wol" data-mac="{{ h.mac }}" title="Включить (Wake-on-LAN)">
-                <i class="fas fa-plug"></i> WOL
-              </button>
-              <button class="btn-shutdown" data-ip="{{ h.ip }}" title="Выключить">
-                <i class="fas fa-power-off"></i> Shutdown
-              </button>
-              <button class="btn-reboot" data-ip="{{ h.ip }}" title="Перезагрузить">
-                <i class="fa fa-sync-alt"></i> Reboot
-              </button>
-            </div>
+            <button class="btn-wol" data-mac="{{ h.mac }}" title="Включить (Wake-on-LAN)">
+              <i class="fas fa-plug"></i> WOL
+            </button>
+            <button class="btn-shutdown" data-ip="{{ h.ip }}" title="Выключить">
+              <i class="fas fa-power-off"></i> Shutdown
+            </button>
+            <button class="btn-reboot" data-ip="{{ h.ip }}" title="Перезагрузить">
+              <i class="fa fa-sync-alt"></i> reboot
+            </button>
           </td>
         </tr>
         {% endfor %}
@@ -175,7 +157,6 @@
   <!-- CodeMirror -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/yaml/yaml.min.js"></script>
-  <script src="{{ url_for('static', filename='js/enhanced-ui.js') }}"></script>
   <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 </body>
 </html>

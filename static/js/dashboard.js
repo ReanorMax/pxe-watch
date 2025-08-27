@@ -70,35 +70,20 @@
       }
     }
     async function saveContentToApi(apiUrl, contentElementId, successCallback, isPlaybook = false) {
-      const originalButton = document.activeElement;
-      const originalText = originalButton ? originalButton.innerHTML : '';
-      
       try {
-        if (originalButton) {
-          window.loading.button(originalButton, Promise.resolve(), originalText);
-        }
-        
         const content = isPlaybook && playbookEditor
           ? playbookEditor.getValue()
           : document.getElementById(contentElementId).value;
-        
-        const savePromise = fetch(apiUrl, {
+        const res = await fetch(apiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain' },
           body: content
         });
-        
-        const res = await window.performance.measureApiCall('save-content', savePromise);
-        
-        if (!res.ok) {
-          const errorData = await res.json();
-          throw new Error(errorData.msg || 'Ошибка сохранения');
-        }
-        
-        window.notifications.success('Данные успешно сохранены');
+        if (!res.ok) throw new Error((await res.json()).msg);
+        alert('Сохранено.');
         if (successCallback) successCallback();
       } catch (e) {
-        window.notifications.error('Ошибка сохранения: ' + e.message);
+        alert('Ошибка сохранения: ' + e.message);
       }
     }
     [
@@ -463,147 +448,3 @@
       }
     });
     overlay.onclick = () => modals.forEach(closeModal);
-    
-    // Notification system
-    function showNotification(message, type = 'info') {
-      const notification = document.createElement('div');
-      notification.className = `notification notification-${type}`;
-      notification.innerHTML = `
-        <div class="notification-content">
-          <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle'}"></i>
-          <span>${message}</span>
-        </div>
-        <button class="notification-close" onclick="this.parentElement.remove()">
-          <i class="fas fa-times"></i>
-        </button>
-      `;
-      
-      document.body.appendChild(notification);
-      
-      // Auto-remove after 5 seconds
-      setTimeout(() => {
-        if (notification.parentElement) {
-          notification.style.animation = 'slideOut 0.3s ease forwards';
-          setTimeout(() => notification.remove(), 300);
-        }
-      }, 5000);
-    }
-    
-    // Add notification styles
-    const notificationStyles = `
-      .notification {
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: var(--surface);
-        border: 1px solid var(--outline-variant);
-        border-radius: var(--radius-md);
-        padding: 16px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        box-shadow: var(--elevation-3);
-        z-index: 10000;
-        max-width: 400px;
-        animation: slideIn 0.3s ease;
-      }
-      
-      .notification-success {
-        border-left: 4px solid var(--success);
-      }
-      
-      .notification-error {
-        border-left: 4px solid var(--error);
-      }
-      
-      .notification-info {
-        border-left: 4px solid var(--info);
-      }
-      
-      .notification-content {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        flex: 1;
-      }
-      
-      .notification-close {
-        background: none;
-        border: none;
-        color: var(--on-surface-variant);
-        cursor: pointer;
-        padding: 4px;
-        border-radius: var(--radius-sm);
-        transition: all 0.2s ease;
-      }
-      
-      .notification-close:hover {
-        background: var(--surface-variant);
-        color: var(--on-surface);
-      }
-      
-      @keyframes slideOut {
-        to {
-          transform: translateX(100%);
-          opacity: 0;
-        }
-      }
-    `;
-    
-    const styleSheet = document.createElement('style');
-    styleSheet.textContent = notificationStyles;
-    document.head.appendChild(styleSheet);
-    
-    // Replace alert with notifications
-    const originalAlert = window.alert;
-    window.alert = function(message) {
-      const type = message.toLowerCase().includes('ошибка') || message.toLowerCase().includes('error') ? 'error' : 
-                   message.toLowerCase().includes('сохранен') || message.toLowerCase().includes('success') ? 'success' : 'info';
-      showNotification(message, type);
-    };
-    
-    // Add loading states to buttons
-    function addLoadingState(button, promise) {
-      const originalContent = button.innerHTML;
-      button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Загрузка...';
-      button.disabled = true;
-      
-      promise.finally(() => {
-        button.innerHTML = originalContent;
-        button.disabled = false;
-      });
-    }
-    
-    // Enhanced table interactions
-    document.addEventListener('DOMContentLoaded', () => {
-      // Add status indicators based on last seen time
-      const updateHostStatus = () => {
-        const rows = document.querySelectorAll('#hosts-table-body tr');
-        const now = new Date();
-        
-        rows.forEach(row => {
-          const timeElement = row.querySelector('time');
-          if (timeElement) {
-            const lastSeen = new Date(timeElement.getAttribute('datetime'));
-            const diffMinutes = (now - lastSeen) / (1000 * 60);
-            
-            let status = 'online';
-            if (diffMinutes > 30) status = 'warning';
-            if (diffMinutes > 60) status = 'offline';
-            
-            row.setAttribute('data-status', status);
-            
-            const statusBadge = row.querySelector('.status-badge');
-            if (statusBadge) {
-              statusBadge.className = `status-badge status-${status}`;
-              statusBadge.textContent = status === 'online' ? 'Online' : 
-                                       status === 'warning' ? 'Warning' : 'Offline';
-            }
-          }
-        });
-      };
-      
-      // Update status every 30 seconds
-      updateHostStatus();
-      setInterval(updateHostStatus, 30000);
-    });

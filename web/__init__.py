@@ -21,25 +21,12 @@ def dashboard():
         ORDER BY ts DESC
     ''').fetchall()
     hosts = []
-    now = datetime.datetime.utcnow()
     for mac, ip, ts_utc in rows:
-        last_seen_utc = datetime.datetime.fromisoformat(ts_utc)
-        last_seen_local = last_seen_utc + LOCAL_OFFSET
-        
-        # Calculate status based on last seen time
-        time_diff = now - last_seen_utc
-        if time_diff.total_seconds() > 3600:  # 1 hour
-            status = 'offline'
-        elif time_diff.total_seconds() > 1800:  # 30 minutes
-            status = 'warning'
-        else:
-            status = 'online'
-            
+        last_seen = datetime.datetime.fromisoformat(ts_utc) + LOCAL_OFFSET
         hosts.append({
             'mac': mac,
             'ip': ip or '—',
-            'last': last_seen_local.strftime('%H:%M:%S'),
-            'status': status,
+            'last': last_seen.strftime('%H:%M:%S'),
         })
     return render_template(
         'dashboard.html',

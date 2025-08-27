@@ -1,169 +1,62 @@
     :root {
-      /* Modern Material Design 3.0 Colors */
-      --primary: #6750A4;
-      --primary-container: #EADDFF;
-      --secondary: #625B71;
-      --secondary-container: #E8DEF8;
-      --tertiary: #7D5260;
-      --surface: #FFFBFE;
-      --surface-variant: #F4EFF4;
-      --surface-container: #F7F2FA;
-      --surface-container-high: #F1ECF4;
-      --on-surface: #1D1B20;
-      --on-surface-variant: #49454F;
-      --outline: #79747E;
-      --outline-variant: #CAC4D0;
-      
-      /* Semantic Colors */
-      --success: #146C2E;
-      --success-container: #A6F2A6;
-      --warning: #825500;
-      --warning-container: #FFDF9C;
-      --error: #BA1A1A;
-      --error-container: #FFDAD6;
-      --info: #0061A4;
-      --info-container: #CFE5FF;
-      
-      /* Shadows & Effects */
-      --elevation-1: 0px 1px 3px 1px rgba(0, 0, 0, 0.15), 0px 1px 2px 0px rgba(0, 0, 0, 0.3);
-      --elevation-2: 0px 2px 6px 2px rgba(0, 0, 0, 0.15), 0px 1px 2px 0px rgba(0, 0, 0, 0.3);
-      --elevation-3: 0px 4px 8px 3px rgba(0, 0, 0, 0.15), 0px 1px 3px 0px rgba(0, 0, 0, 0.3);
-      --elevation-4: 0px 6px 10px 4px rgba(0, 0, 0, 0.15), 0px 2px 3px 0px rgba(0, 0, 0, 0.3);
-      
-      /* Border Radius */
-      --radius-xs: 4px;
-      --radius-sm: 8px;
-      --radius-md: 12px;
-      --radius-lg: 16px;
-      --radius-xl: 20px;
-      --radius-full: 9999px;
-      
-      /* Legacy mappings for compatibility */
-      --accent: var(--primary);
-      --bg: var(--surface);
-      --text: var(--on-surface);
-      --border: var(--outline-variant);
-      --green: var(--success);
-      --grey: var(--on-surface-variant);
-      --danger: var(--error);
-      --orange: var(--warning);
-      --portainer: #0ea5e9;
-      --wol: var(--success);
-      --shutdown: #64748b;
-      --logtail: #a855f7;
+      --accent: #1976d2;
+      --bg: #fafafa;
+      --text: #212121;
+      --border: #e0e0e0;
+      --green: #66bb6a;
+      --grey: #9e9e9e;
+      --danger: #ef5350;
+      --orange: #ffa726;
+      --portainer: #139eca;
+      --wol: #4caf50;
+      --shutdown: #607d8b;
+      --logtail: #9c27b0;
+      --header-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      --table-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      --divider: rgba(255,255,255,0.2);
     }
-    
     @media (prefers-color-scheme: dark) {
       :root {
-        /* Dark theme Material Design 3.0 */
-        --primary: #D0BCFF;
-        --primary-container: #4F378B;
-        --secondary: #CCC2DC;
-        --secondary-container: #4A4458;
-        --tertiary: #EFB8C8;
-        --surface: #141218;
-        --surface-variant: #49454F;
-        --surface-container: #211F26;
-        --surface-container-high: #2B2930;
-        --on-surface: #E6E0E9;
-        --on-surface-variant: #CAC4D0;
-        --outline: #938F99;
-        --outline-variant: #49454F;
-        
-        --success: #90DD90;
-        --success-container: #0F5132;
-        --warning: #FFB84D;
-        --warning-container: #5D4200;
-        --error: #FFB4AB;
-        --error-container: #93000A;
-        --info: #9ECAFF;
-        --info-container: #004B73;
-        
-        --portainer: #38bdf8;
-        --wol: var(--success);
-        --shutdown: #94a3b8;
-        --logtail: #c084fc;
+        --bg: #121212;
+        --text: #f5f5f5;
+        --border: #333;
+        --accent: #1e88e5;
+        --green: #4caf50;
+        --grey: #757575;
+        --danger: #c62828;
+        --orange: #ff9800;
+        --portainer: #15a8e0;
+        --wol: #66bb6a;
+        --shutdown: #78909c;
+        --logtail: #8e24aa;
+        --header-shadow: 0 2px 8px rgba(0,0,0,0.5);
+        --table-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        --divider: rgba(255,255,255,0.1);
       }
     }
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
+      transition: background 0.3s, color 0.3s;
     }
-    
-    html {
-      scroll-behavior: smooth;
-    }
-    
     body {
-      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-family: "Inter", "Segoe UI", sans-serif;
       line-height: 1.6;
-      background: linear-gradient(135deg, var(--surface) 0%, var(--surface-container) 100%);
-      color: var(--on-surface);
-      min-height: 100vh;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    
-    /* Scrollbar Styling */
-    ::-webkit-scrollbar {
-      width: 8px;
-      height: 8px;
-    }
-    
-    ::-webkit-scrollbar-track {
-      background: var(--surface-variant);
-      border-radius: var(--radius-sm);
-    }
-    
-    ::-webkit-scrollbar-thumb {
-      background: var(--outline);
-      border-radius: var(--radius-sm);
-      transition: background 0.2s ease;
-    }
-    
-    ::-webkit-scrollbar-thumb:hover {
-      background: var(--on-surface-variant);
+      background: var(--bg);
+      color: var(--text);
     }
     header {
-      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 50%, var(--tertiary) 100%);
-      color: white;
-      padding: 20px 32px;
+      background: linear-gradient(135deg, var(--accent), #2196f3);
+      color: #fff;
+      padding: 14px 28px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      box-shadow: var(--elevation-2);
-      border-bottom-left-radius: var(--radius-lg);
-      border-bottom-right-radius: var(--radius-lg);
-      position: relative;
-      overflow: hidden;
+      box-shadow: var(--header-shadow);
+      border-bottom-left-radius: 8px;
+      border-bottom-right-radius: 8px;
     }
-    
-    header::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: linear-gradient(45deg, rgba(255,255,255,0.1) 0%, transparent 50%);
-      pointer-events: none;
-    }
-    
-    header h1 {
-      font-size: 1.75rem;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      letter-spacing: -0.025em;
-      text-shadow: 0 2px 4px rgba(0,0,0,0.2);
-    }
-    
-    header h1 i {
-      font-size: 1.5rem;
-      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
-    }
-    /* Button System - Material Design 3.0 */
     .btn,
     .btn-reboot,
     .btn-semaphore,
@@ -173,694 +66,103 @@
     .btn-shutdown,
     .btn-logtail {
       border: none;
-      padding: 10px 20px;
-      border-radius: var(--radius-full);
-      color: white;
+      padding: 6px 12px;
+      border-radius: 8px;
+      color: #fff;
       cursor: pointer;
       font-weight: 500;
-      font-size: 0.875rem;
       display: inline-flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
       text-decoration: none;
-      position: relative;
-      overflow: hidden;
-      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-      box-shadow: var(--elevation-1);
-      letter-spacing: 0.01em;
+      font-size: 0.9em;
+      margin-top: 4px;
+      transition: background-color 0.2s, transform 0.2s;
     }
-    
-    /* Ripple effect */
-    .btn::before,
-    .btn-reboot::before,
-    .btn-semaphore::before,
-    .btn-danger::before,
-    .btn-portainer::before,
-    .btn-wol::before,
-    .btn-shutdown::before,
-    .btn-logtail::before {
-      content: '';
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 0;
-      height: 0;
-      background: rgba(255, 255, 255, 0.3);
-      border-radius: 50%;
-      transform: translate(-50%, -50%);
-      transition: width 0.3s, height 0.3s;
-    }
-    
-    .btn:active::before,
-    .btn-reboot:active::before,
-    .btn-semaphore:active::before,
-    .btn-danger:active::before,
-    .btn-portainer:active::before,
-    .btn-wol:active::before,
-    .btn-shutdown:active::before,
-    .btn-logtail:active::before {
-      width: 200px;
-      height: 200px;
-    }
-    
-    /* Button variants */
-    .btn {
-      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-container) 100%);
-      box-shadow: var(--elevation-2);
-    }
-    
-    .btn:hover {
-      transform: translateY(-2px);
-      box-shadow: var(--elevation-3);
-      background: linear-gradient(135deg, var(--primary) 0%, #5a4a93 100%);
-    }
-    
-    .btn-danger {
-      background: linear-gradient(135deg, var(--error) 0%, #d32f2f 100%);
-    }
-    
-    .btn-danger:hover {
-      transform: translateY(-2px);
-      box-shadow: var(--elevation-3);
-      background: linear-gradient(135deg, #c62828 0%, #b71c1c 100%);
-    }
-    
-    .btn-reboot {
-      background: linear-gradient(135deg, var(--warning) 0%, #f57c00 100%);
-      padding: 6px 12px;
-      font-size: 0.8rem;
-    }
-    
-    .btn-reboot:hover {
-      transform: translateY(-1px);
-      background: linear-gradient(135deg, #ef6c00 0%, #e65100 100%);
-    }
-    
-    .btn-semaphore {
-      background: linear-gradient(135deg, var(--success) 0%, #2e7d32 100%);
-    }
-    
-    .btn-semaphore:hover {
-      transform: translateY(-2px);
-      background: linear-gradient(135deg, #1b5e20 0%, #0d4e1c 100%);
-    }
-    
-    .btn-portainer {
-      background: linear-gradient(135deg, var(--portainer) 0%, #0284c7 100%);
-      padding: 6px 12px;
-      font-size: 0.8rem;
-    }
-    
-    .btn-portainer:hover {
-      transform: translateY(-1px);
-      background: linear-gradient(135deg, #0369a1 0%, #075985 100%);
-    }
-    
-    .btn-wol {
-      background: linear-gradient(135deg, var(--success) 0%, #2e7d32 100%);
-      padding: 6px 12px;
-      font-size: 0.8rem;
-    }
-    
-    .btn-wol:hover {
-      transform: translateY(-1px);
-      background: linear-gradient(135deg, #1b5e20 0%, #0d4e1c 100%);
-    }
-    
-    .btn-shutdown {
-      background: linear-gradient(135deg, var(--shutdown) 0%, #475569 100%);
-      padding: 6px 12px;
-      font-size: 0.8rem;
-    }
-    
-    .btn-shutdown:hover {
-      transform: translateY(-1px);
-      background: linear-gradient(135deg, #334155 0%, #1e293b 100%);
-    }
-    
-    .btn-logtail {
-      background: linear-gradient(135deg, var(--logtail) 0%, #9333ea 100%);
-      padding: 8px 16px;
-      font-size: 0.85rem;
-    }
-    
-    .btn-logtail:hover {
-      transform: translateY(-2px);
-      background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
-    }
-    
-    /* Header button styling */
+    .btn,
+    .btn-reboot,
+    .btn-semaphore,
     .header-group .btn {
-      padding: 10px 18px;
-      font-size: 0.9rem;
-      background: rgba(255, 255, 255, 0.15);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      padding: 8px 16px;
+      font-size: 0.95em;
+      margin-top: 0;
     }
-    
-    .header-group .btn:hover {
-      background: rgba(255, 255, 255, 0.25);
-      border-color: rgba(255, 255, 255, 0.3);
-      transform: translateY(-1px);
+    .btn { background: var(--accent); }
+    .btn:hover { background: #1565c0; transform: translateY(-1px); }
+    .btn-danger { background: var(--danger); }
+    .btn-danger:hover { background: #d32f2f; }
+    .btn-reboot { background: var(--orange); padding: 4px 8px; font-size: 0.85em; }
+    .btn-reboot:hover { background: #fb8c00; }
+    .btn-semaphore { background: #4caf50; }
+    .btn-semaphore:hover { background: #388e3c; }
+    .btn-portainer { background: var(--portainer); padding: 6px 10px; font-size: 0.85em; }
+    .btn-portainer:hover { background: #0f7ba5; }
+    @media (prefers-color-scheme: dark) {
+      .btn-portainer:hover { background: #108bc9; }
     }
-    .container {
-      padding: 32px;
-      max-width: 1400px;
-      margin: 0 auto;
+    .btn-portainer i { font-size: 0.9em; }
+    .btn-wol { background: var(--wol); padding: 4px 8px; font-size: 0.85em; }
+    .btn-wol:hover { background: #388e3c; }
+    @media (prefers-color-scheme: dark) {
+      .btn-wol:hover { background: #81c784; }
     }
-    
-    /* Modern Table Design */
+    .btn-wol i { font-size: 0.9em; }
+    .btn-shutdown { background: var(--shutdown); padding: 4px 8px; font-size: 0.85em; }
+    .btn-shutdown:hover { background: #455a64; }
+    @media (prefers-color-scheme: dark) {
+      .btn-shutdown:hover { background: #90a4ae; }
+    }
+    .btn-shutdown i { font-size: 0.9em; }
+    .btn-logtail { background: var(--logtail); padding: 6px 10px; font-size: 0.85em; }
+    .btn-logtail:hover { background: #7b1fa2; }
+    .btn-logtail i { font-size: 0.9em; }
+    .container { padding: 24px; }
     table {
       width: 100%;
       border-collapse: collapse;
-      background: var(--surface);
-      color: var(--on-surface);
-      border-radius: var(--radius-lg);
+      background: var(--bg);
+      color: var(--text);
+      border-radius: 10px;
       overflow: hidden;
-      box-shadow: var(--elevation-2);
-      font-size: 0.95rem;
-      margin-top: 24px;
-      backdrop-filter: blur(10px);
+      box-shadow: var(--table-shadow);
+      font-size: 0.95em;
     }
-    
-    thead {
-      background: linear-gradient(135deg, var(--primary-container) 0%, var(--secondary-container) 100%);
-      position: relative;
-    }
-    
-    thead::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: linear-gradient(45deg, rgba(255,255,255,0.1) 0%, transparent 50%);
-      pointer-events: none;
-    }
-    
     thead th {
-      color: var(--on-surface);
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      font-size: 0.85rem;
-      position: relative;
+      background: var(--accent);
+      color: #fff;
     }
-    
-    th, td {
-      padding: 16px 20px;
-      text-align: left;
-      vertical-align: middle;
-      position: relative;
+    th, td { padding: 14px 18px; text-align: left; vertical-align: middle; }
+    tr:not(:last-child) td { border-bottom: 1px solid var(--border); }
+    tr:hover { background-color: rgba(0,0,0,0.04); }
+    @media (prefers-color-scheme: dark) {
+      tr:hover { background-color: rgba(255,255,255,0.05); }
     }
-    
-    tbody tr {
-      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-      border-bottom: 1px solid var(--outline-variant);
-    }
-    
-    tbody tr:hover {
-      background: linear-gradient(135deg, var(--surface-container) 0%, var(--surface-container-high) 100%);
-      transform: translateY(-1px);
-      box-shadow: 0 4px 8px -2px rgba(0, 0, 0, 0.1);
-    }
-    
-    tbody tr:last-child {
-      border-bottom: none;
-    }
-    
-    /* Status indicators for hosts */
-    tbody tr::before {
-      content: '';
-      position: absolute;
-      left: 0;
-      top: 0;
-      bottom: 0;
-      width: 4px;
-      background: var(--success);
-      transition: all 0.2s ease;
-    }
-    
-    tbody tr[data-status="offline"]::before {
-      background: var(--error);
-    }
-    
-    tbody tr[data-status="warning"]::before {
-      background: var(--warning);
-    }
-    /* Modal System */
-    #overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.6);
-      backdrop-filter: blur(4px);
-      display: none;
-      z-index: 1000;
-      animation: fadeIn 0.2s ease;
-    }
-    
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-    
-    @keyframes slideIn {
-      from {
-        transform: translateX(100%);
-        opacity: 0;
-      }
-      to {
-        transform: translateX(0);
-        opacity: 1;
-      }
-    }
-    
-    .modal {
-      position: fixed;
-      top: 0;
-      right: 0;
-      width: 55vw;
-      max-width: 800px;
-      height: 100vh;
-      background: var(--surface);
-      z-index: 1001;
-      display: none;
-      flex-direction: column;
-      box-shadow: var(--elevation-4);
-      border-top-left-radius: var(--radius-lg);
-      border-bottom-left-radius: var(--radius-lg);
-      animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    
-    .modal header {
-      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-      color: white;
-      padding: 16px 24px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-shrink: 0;
-      border-top-left-radius: var(--radius-lg);
-      position: relative;
-      overflow: hidden;
-    }
-    
-    .modal header::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: linear-gradient(45deg, rgba(255,255,255,0.1) 0%, transparent 50%);
-      pointer-events: none;
-    }
-    
-    .modal header span {
-      font-size: 1.125rem;
-      font-weight: 600;
-      position: relative;
-    }
-    
-    .close-modal {
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      color: white;
-      padding: 8px;
-      border-radius: var(--radius-sm);
-      cursor: pointer;
-      transition: all 0.2s ease;
-      position: relative;
-    }
-    
-    .close-modal:hover {
-      background: rgba(255, 255, 255, 0.2);
-      transform: scale(1.05);
-    }
-    /* Ansible Panel */
-    #ansible-panel {
-      margin: 32px 0;
-      padding: 24px;
-      border-radius: var(--radius-lg);
-      background: var(--surface-container);
-      border: 1px solid var(--outline-variant);
-      box-shadow: var(--elevation-1);
-      display: none;
-    }
-    
-    #ansible-panel h3 {
-      color: var(--on-surface);
-      font-size: 1.25rem;
-      font-weight: 600;
-      margin-bottom: 20px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    
-    #ansible-panel h3 i {
-      color: var(--primary);
-    }
-    
-    .header-group {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-    }
-    
-    .divider {
-      width: 1px;
-      height: 28px;
-      background: rgba(255, 255, 255, 0.2);
-      margin: 0 16px;
-    }
-    
-    /* Log Viewer */
-    .log-viewer {
-      flex: 1;
-      background: #1e1e1e;
-      color: #ddd;
-      font-family: 'Fira Code', 'Consolas', 'Courier New', monospace;
-      font-size: 14px;
-      padding: 16px;
-      overflow-y: auto;
-      white-space: pre-wrap;
-      border: 1px solid var(--outline-variant);
-      border-radius: var(--radius-sm);
-      line-height: 1.6;
-      max-height: 400px;
-    }
-    
-    .log-controls {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 12px;
-    }
-    
-    .log-controls h4 {
-      flex: 1;
-      color: var(--on-surface);
-      font-weight: 500;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    
-    .log-controls select {
-      padding: 6px 12px;
-      border-radius: var(--radius-sm);
-      border: 1px solid var(--outline-variant);
-      background: var(--surface);
-      color: var(--on-surface);
-      font-size: 0.875rem;
-    }
-    
-    /* Form Elements */
-    .modal textarea:not(#playbook-content) {
-      flex: 1;
-      padding: 16px;
-      font-family: 'Fira Code', 'Consolas', 'Courier New', monospace;
-      font-size: 14px;
-      background: var(--surface-variant);
-      color: var(--on-surface);
-      border: 1px solid var(--outline-variant);
-      border-radius: var(--radius-sm);
-      resize: none;
-      line-height: 1.5;
-    }
-    
-    .controls {
-      padding: 20px 24px;
-      display: flex;
-      gap: 12px;
-      justify-content: flex-end;
-      flex-shrink: 0;
-      background: var(--surface-container);
-      border-top: 1px solid var(--outline-variant);
-    }
-    .actions-cell {
-      display: flex;
-      align-items: center;
-      justify-content: flex-start;
-    }
-    
-    .action-buttons {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      align-items: flex-start;
-    }
-    
-    /* Host Information Styling */
-    .host-info {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-    
-    .mac-address {
-      font-family: 'Fira Code', 'Consolas', monospace;
-      font-weight: 600;
-      color: var(--on-surface);
-      font-size: 0.9rem;
-    }
-    
-    .status-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      padding: 2px 8px;
-      border-radius: var(--radius-full);
-      font-size: 0.75rem;
-      font-weight: 500;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-    
-    .status-online {
-      background: var(--success-container);
-      color: var(--success);
-    }
-    
-    .status-offline {
-      background: var(--error-container);
-      color: var(--error);
-    }
-    
-    .status-warning {
-      background: var(--warning-container);
-      color: var(--warning);
-    }
-    
-    .ip-address {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-family: 'Fira Code', 'Consolas', monospace;
-      font-weight: 500;
-    }
-    
-    .ip-address i {
-      color: var(--outline);
-    }
-    
-    .timestamp {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      color: var(--on-surface-variant);
-      font-variant-numeric: tabular-nums;
-    }
-    
-    .timestamp i {
-      color: var(--outline);
-    }
-    
-    /* Preseed Modal Specific */
-    #preseed-modal .preseed-top-controls {
-      padding: 20px 24px;
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      flex-shrink: 0;
-      background: var(--surface-container);
-      border-bottom: 1px solid var(--outline-variant);
-    }
-    
-    #preseed-modal .preseed-top-controls select {
-      flex: 1;
-      padding: 8px 12px;
-      border-radius: var(--radius-sm);
-      border: 1px solid var(--outline-variant);
-      background: var(--surface);
-      color: var(--on-surface);
-      font-size: 0.875rem;
-    }
-    
-    /* CodeMirror Editor */
-    #playbook-editor-container {
-      flex: 1;
-      overflow: hidden;
-      position: relative;
-      border: 1px solid var(--outline-variant);
-      border-radius: var(--radius-sm);
-      margin: 20px 24px;
-    }
-    
-    #playbook-editor {
-      height: 100%;
-      width: 100%;
-    }
-    
-    .CodeMirror {
-      height: 100% !important;
-      font-family: 'Fira Code', 'Consolas', 'Courier New', monospace !important;
-      font-size: 14px !important;
-      line-height: 1.6 !important;
-      margin: 0 !important;
-      padding: 0 !important;
-      border-radius: var(--radius-sm) !important;
-    }
-    
-    .CodeMirror-gutters {
-      background-color: #282a36 !important;
-      color: #6272a4 !important;
-      padding: 0 16px !important;
-      border-right: 1px solid #444 !important;
-      border-top-left-radius: var(--radius-sm) !important;
-      border-bottom-left-radius: var(--radius-sm) !important;
-    }
-    
-    .CodeMirror-linenumber {
-      font-family: 'Fira Code', 'Consolas', 'Courier New', monospace !important;
-      font-size: 13px !important;
-      color: #6272a4 !important;
-      text-align: right;
-      padding: 0 8px !important;
-    }
-    
-    .CodeMirror-cursor {
-      border-left: 2px solid #f8f8f0 !important;
-    }
-    
-    /* File Manager */
-    .file-list-simple-container {
-      flex: 1;
-      padding: 24px;
-      overflow-y: auto;
-    }
-    
-    .file-simple-table {
-      width: 100%;
-      border-collapse: collapse;
-      background: var(--surface);
-      color: var(--on-surface);
-      font-size: 0.9rem;
-      border-radius: var(--radius-sm);
-      overflow: hidden;
-      box-shadow: var(--elevation-1);
-    }
-    
-    .file-simple-table th,
-    .file-simple-table td {
-      padding: 12px 16px;
-      text-align: left;
-      border-bottom: 1px solid var(--outline-variant);
-    }
-    
-    .file-simple-table th {
-      background: var(--surface-container);
-      font-weight: 600;
-      color: var(--on-surface);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      font-size: 0.8rem;
-    }
-    
-    .file-simple-table tbody tr {
-      transition: all 0.2s ease;
-    }
-    
-    .file-simple-table tbody tr:hover {
-      background: var(--surface-container);
-      transform: translateY(-1px);
-    }
-    
-    .file-simple-table tbody tr:last-child td {
-      border-bottom: none;
-    }
-    
-    .file-simple-table td:nth-child(2) {
-      text-align: right;
-      font-variant-numeric: tabular-nums;
-      color: var(--on-surface-variant);
-    }
-    
-    .file-simple-table td:nth-child(3) {
-      font-family: 'Fira Code', 'Consolas', 'Courier New', monospace;
-      font-size: 0.85rem;
-      color: var(--on-surface-variant);
-    }
-    
-    .file-simple-table td:nth-child(1) {
-      font-family: 'Fira Code', 'Consolas', 'Courier New', monospace;
-      font-weight: 500;
-    }
-    
-    /* Responsive Design */
-    @media (max-width: 1200px) {
-      .modal {
-        width: 70vw;
-      }
-      
-      .container {
-        padding: 24px 16px;
-      }
-      
-      header {
-        padding: 16px 20px;
-        flex-direction: column;
-        gap: 16px;
-        align-items: stretch;
-      }
-      
-      .header-group {
-        justify-content: center;
-        flex-wrap: wrap;
-      }
-      
-      .divider {
-        display: none;
-      }
-    }
-    
-    @media (max-width: 768px) {
-      .modal {
-        width: 95vw;
-        left: 2.5vw;
-        right: 2.5vw;
-      }
-      
-      .action-buttons {
-        flex-direction: row;
-        gap: 4px;
-      }
-      
-      .btn-wol,
-      .btn-shutdown,
-      .btn-reboot {
-        padding: 4px 6px;
-        font-size: 0.75rem;
-      }
-      
-      table {
-        font-size: 0.85rem;
-      }
-      
-      th, td {
-        padding: 12px 8px;
-      }
-    }
+    #overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; z-index: 1000; }
+    .modal { position: fixed; top: 0; right: 0; width: 50vw; height: 100vh; background: var(--bg); z-index: 1001; display: none; flex-direction: column; box-shadow: -4px 0 12px rgba(0,0,0,0.3); }
+    .modal header { background: var(--accent); color: #fff; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+    #preseed-modal .preseed-top-controls { padding: 12px; display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+    #preseed-modal .preseed-top-controls select { flex: 1; }
+    #playbook-editor-container { flex: 1; overflow: hidden; position: relative; }
+    #playbook-editor { height: 100%; width: 100%; }
+    .CodeMirror { height: 100% !important; font-family: 'Fira Code', monospace !important; font-size: 14px !important; line-height: 1.5 !important; margin: 0 !important; padding: 0 !important; }
+    .CodeMirror-gutters { background-color: #282a36 !important; color: #6272a4 !important; padding: 0 12px !important; border-right: 1px solid #444 !important; }
+    .CodeMirror-linenumber { font-family: 'Fira Code', monospace !important; font-size: 14px !important; color: #6272a4 !important; text-align: right; }
+    .CodeMirror-cursor { border-left: 2px solid #f8f8f0 !important; }
+    .modal textarea:not(#playbook-content) { flex: 1; padding: 12px; font-family: monospace; font-size: 13px; background: #1e1e1e; color: #eee; border: none; resize: none; }
+    .controls { padding: 12px; display: flex; gap: 8px; justify-content: flex-end; flex-shrink: 0; }
+    .log-viewer { flex: 1; background: #1e1e1e; color: #ddd; font-family: monospace; font-size: 14px; padding: 12px; overflow-y: auto; white-space: pre-wrap; border-top: 1px solid var(--border); line-height: 1.6; }
+    .log-controls { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .log-controls select { padding: 4px 8px; }
+    .file-list-simple-container { flex: 1; padding: 16px; overflow-y: auto; }
+    .file-simple-table { width: 100%; border-collapse: collapse; background: var(--bg); color: var(--text); font-size: 0.9em; }
+    .file-simple-table th, .file-simple-table td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); }
+    .file-simple-table th { background-color: rgba(0, 0, 0, 0.05); font-weight: 600; }
+    @media (prefers-color-scheme: dark) { .file-simple-table th { background-color: rgba(255, 255, 255, 0.1); } }
+    .file-simple-table tbody tr:hover { background-color: rgba(0, 0, 0, 0.03); }
+    @media (prefers-color-scheme: dark) { .file-simple-table tbody tr:hover { background-color: rgba(255, 255, 255, 0.07); } }
+    .file-simple-table td:nth-child(2) { text-align: right; font-variant-numeric: tabular-nums; }
+    .file-simple-table td:nth-child(3) { font-family: 'Fira Code', 'Consolas', 'Courier New', monospace; font-size: 0.85em; }
+    .file-simple-table td:nth-child(1) { font-family: 'Fira Code', 'Consolas', 'Courier New', monospace; }
+    .header-group { display: flex; gap: 8px; align-items: center; }
+    .divider { width: 1px; height: 24px; background: var(--divider); margin: 0 12px; }
+    .actions-cell { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
